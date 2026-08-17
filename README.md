@@ -150,7 +150,7 @@ Encargado de la información económica relacionada con los productores.
 
 ---
 
-# ⚙️ 6. Módulos del sistema
+#  6. Módulos del sistema
 
 ## 6.1 Gestión de productores
 
