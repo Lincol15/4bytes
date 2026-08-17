@@ -405,9 +405,9 @@ Las operaciones importantes deberán poder relacionarse con el usuario, fecha y 
 Las tecnologías consideradas para el desarrollo son:
 
 | Tecnología | Utilización                |
-| ---------- | -------------------------- |
+| Android Estudio | -------------------------- |
 | **Java**   | Desarrollo del sistema     |
-| **MySQL**  | Gestión de base de datos   |
+| **kotlin Multiplatoform**  | Gestión de base de datos   |
 | **Git**    | Control de versiones       |
 | **GitHub** | Repositorio y colaboración |
 | **UML**    | Modelado del sistema       |
@@ -532,7 +532,7 @@ Entre los documentos previstos:
 
 #  15. Estado del proyecto
 
-**Estado:** 🟡 En desarrollo
+**Estado:**  En desarrollo
 
 ### Progreso
 
