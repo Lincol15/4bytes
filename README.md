@@ -67,10 +67,10 @@ Esta capacidad permitirá relacionar una recolección con su ubicación y facili
 
 | Integrante                    | Código        | Rol semana 1       |
 | ----------------------------- | ------------- | ------------------ |
-| LINCOL WERNER YUJRA CALLA     | Por completar | Coordinación       |
-| GUIDO DANIEL MAYTA SUAÑA      | Por completar | Lógica y datos     |
-| RONALD CONDORI OLAZABAL       | Por completar | UI                 |
-| DILWER JHONATAN AGUILAR PAJA | Por completar | QA y documentación |
+| LINCOL WERNER YUJRA CALLA     | 202411737 | Coordinación       |
+| GUIDO DANIEL MAYTA SUAÑA      | 202413212 | QA y documentación     |
+| RONALD CONDORI OLAZABAL       | 202410814 | Logica y datos               |
+| DILWER JHONATAN AGUILAR PAJA | 202414021 | UI  |
 
 ## Tecnologías
 
