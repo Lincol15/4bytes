@@ -2,7 +2,6 @@
 
 > Registra la recolección de leche en campo, incluso sin señal, y llévala sincronizada hasta la planta.
 
-*(Nombre provisional: reemplácenlo por el que elija el equipo — debe ser corto y aparecer así en repo y sustentaciones)*
 
 ## Problema que resuelve
 La empresa recolecta leche de productores de la zona a través de rutas fijas, la traslada a la planta y luego la recibe y controla. Gran parte de este proceso se lleva de forma manual o con información dispersa (cuadernos, hojas sueltas, mensajes), lo que dificulta controlar las entregas, las cantidades exactas recolectadas, el cumplimiento de rutas, las incidencias durante la recolección y los datos de cada productor. Además, no hay una forma clara de comparar lo que se recogió en campo contra lo que finalmente llega y se registra en planta.
@@ -37,11 +36,11 @@ Geolocalización (ubicar puntos de recolección y rutas), cámara/QR (identifica
 ## Equipo [nombre del equipo]
 | Integrante | Código | Rol semana 1 |
 |---|---|---|
-| LINCOL WERNER YUJRA CALLA | Por completar | Coordinación |
-| GUIDO DANIEL MAYTA SUAÑA | Por completar | Lógica y datos |
-| RONALD CONDORI OLAZABAL | Por completar | UI |
-| DILWERT JHONATAN AGUILAR PAJA | Por completar | QA y documentación |
+| LINCOL WERNER YUJRA CALLA | 202411737 | Coordinación |
+| GUIDO DANIEL MAYTA SUAÑA | 202413212 | QA y documentación |
+| RONALD CONDORI OLAZABAL | 202410814 | Lógica y datos |
+| DILWERT JHONATAN AGUILAR PAJA |202414021 | UI |
 
 ## Tecnologías
 Kotlin Multiplatform · Compose Multiplatform · targets Android y Desktop
-(iOS preparado: requiere macOS para compilar)
+
