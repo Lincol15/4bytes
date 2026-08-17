@@ -1,114 +1,490 @@
-# 🥛 4bytes
+#  4bytes
 
 ## Sistema de Gestión para el Acopio de Leche
 
-**Proyecto grupal del curso de Ingeniería de Software 1**
+Sistema de software orientado a la **gestión y control del proceso de acopio de leche**, desde la recolección realizada a los productores de la zona hasta la recepción y control de la leche en la planta.
+
+> **Proyecto académico — Ingeniería de Software 1**
 
 ---
 
-## 📋 Descripción
+##  1. Descripción del proyecto
 
-**4bytes** es un proyecto de software desarrollado por estudiantes del curso de **Ingeniería de Software 1**, cuyo objetivo es diseñar y desarrollar un sistema para apoyar la gestión del **acopio de leche en una zona rural**.
+**4bytes** es un proyecto de software desarrollado para apoyar la gestión de una empresa dedicada al **acopio de leche**, que trabaja directamente con productores de una zona determinada.
 
-El sistema busca facilitar el registro y control de la información relacionada con los productores de leche, las entregas realizadas, la cantidad de leche recolectada, el control de calidad y los pagos correspondientes.
+El proceso de acopio comprende diferentes actividades, entre ellas:
 
-Actualmente, parte de la información de los procesos de acopio puede ser registrada manualmente, lo que puede generar errores, pérdida de información y dificultades para obtener reportes.
+1. Registro de productores.
+2. Planificación y seguimiento de la recolección.
+3. Recolección de leche en los puntos establecidos.
+4. Registro de cantidades recolectadas.
+5. Traslado de la leche hacia la planta.
+6. Recepción de la leche.
+7. Control de calidad.
+8. Registro de incidencias.
+9. Consolidación de la información.
+10. Gestión administrativa y generación de reportes.
 
-Por ello, el proyecto propone una solución informática que permita organizar y centralizar esta información, facilitando la gestión del centro de acopio.
+Actualmente, parte de esta información puede encontrarse registrada de manera manual o distribuida en diferentes medios, dificultando el seguimiento completo del proceso.
+
+Por ello, **4bytes** propone centralizar la información mediante un sistema que permita registrar, consultar, controlar y analizar los datos generados durante el proceso de acopio.
 
 ---
 
-## 🎯 Objetivo del proyecto
+#  2. Problemática identificada
 
-### Objetivo general
+La empresa realiza actividades relacionadas con la recolección y recepción de leche provenientes de diferentes productores de la zona. Sin embargo, parte de la gestión de estas actividades se realiza mediante registros manuales o información dispersa.
 
-Desarrollar un sistema de gestión que permita registrar, controlar y administrar eficientemente el proceso de acopio de leche de los productores de una zona rural.
+Esta situación puede generar dificultades para:
 
-### Objetivos específicos
+* Mantener actualizada la información de los productores.
+* Controlar las cantidades de leche recolectadas.
+* Realizar un seguimiento de las rutas de recolección.
+* Comparar la cantidad recolectada en campo con la cantidad recibida en planta.
+* Registrar y consultar incidencias durante el proceso.
+* Mantener un historial organizado de las entregas.
+* Realizar un seguimiento adecuado del control de calidad.
+* Obtener información consolidada para la toma de decisiones.
+* Gestionar correctamente la información administrativa relacionada con el acopio.
+
+Como consecuencia, la empresa puede presentar dificultades para conocer de manera rápida y organizada **qué productor entregó leche, cuánto se recolectó, cuándo y dónde se realizó la recolección, qué cantidad llegó a la planta y qué incidencias ocurrieron durante el proceso**.
+
+---
+
+#  3. Propuesta de solución
+
+Se propone desarrollar un **Sistema de Gestión para el Acopio de Leche** que permita centralizar la información generada durante el proceso.
+
+El sistema permitirá registrar y relacionar la información de:
+
+* Productores.
+* Puntos de recolección.
+* Rutas.
+* Recolecciones.
+* Cantidades de leche.
+* Traslados.
+* Recepciones en planta.
+* Controles de calidad.
+* Incidencias.
+* Pagos.
+* Reportes administrativos.
+
+De esta manera, se busca disponer de una fuente de información organizada que permita realizar un seguimiento desde la **recolección en campo hasta la recepción en planta**.
+
+---
+
+#  4. Objetivos
+
+## 4.1 Objetivo general
+
+Desarrollar un sistema de gestión que permita **registrar, centralizar y controlar la información relacionada con el proceso de acopio de leche**, desde la recolección a los productores hasta la recepción y control en planta.
+
+## 4.2 Objetivos específicos
 
 * Registrar y administrar la información de los productores.
-* Registrar las entregas de leche realizadas por cada productor.
-* Controlar la cantidad de litros recolectados.
-* Registrar información relacionada con la calidad de la leche.
-* Calcular los montos correspondientes a los productores.
-* Mantener un historial de las entregas realizadas.
-* Generar reportes sobre la producción y el acopio.
-* Facilitar la consulta de información para los responsables del centro de acopio.
+* Registrar los puntos y rutas de recolección.
+* Registrar las cantidades de leche recolectadas.
+* Asociar cada recolección con su productor, ruta y responsable correspondiente.
+* Registrar la información relacionada con el traslado de la leche.
+* Registrar la recepción de leche en la planta.
+* Comparar las cantidades recolectadas en campo con las cantidades recibidas en planta.
+* Registrar los controles de calidad realizados.
+* Registrar incidencias ocurridas durante la recolección y traslado.
+* Mantener un historial de las operaciones realizadas.
+* Facilitar la generación de reportes para la gestión administrativa.
+* Facilitar la consulta de información para apoyar la toma de decisiones.
 
 ---
 
-## 👥 Integrantes
+#  5. Usuarios del sistema
 
-* **LINCOL WERNER YUJRA CALLA**
-* **GUIDO DANIEL MAYTA SUAÑA**
-* **RONALD CONDORI OLAZABAL**
-* **DILWERT JHONATAN AGUILAR PAJA**
+El sistema estará orientado a los diferentes actores que participan en el proceso de acopio.
 
----
+###  Administrador
 
-## 🏗️ Funcionalidades previstas
+Responsable de la administración general del sistema.
 
-El sistema contempla las siguientes funcionalidades:
+**Funciones principales:**
 
-### 👨‍🌾 Gestión de productores
+* Gestionar usuarios.
+* Gestionar productores.
+* Consultar información general.
+* Administrar parámetros del sistema.
+* Consultar reportes.
 
-* Registrar productores.
-* Modificar información de productores.
-* Consultar productores.
-* Buscar productores.
-* Gestionar información de contacto.
+###  Responsable de recolección
 
-### 🥛 Gestión del acopio
+Encargado de realizar o registrar las actividades de recolección.
 
-* Registrar la recepción de leche.
-* Registrar fecha y hora de entrega.
-* Registrar cantidad de litros.
-* Asociar cada entrega con un productor.
-* Consultar el historial de entregas.
+**Funciones principales:**
 
-### 🧪 Control de calidad
+* Consultar rutas asignadas.
+* Registrar recolecciones.
+* Registrar cantidades recolectadas.
+* Registrar incidencias.
+* Consultar información de productores.
 
-* Registrar datos de calidad de la leche.
+###  Responsable de planta
+
+Encargado de recibir y controlar la leche que llega a la planta.
+
+**Funciones principales:**
+
+* Registrar recepción.
+* Registrar cantidad recibida.
+* Registrar controles de calidad.
 * Registrar observaciones.
-* Clasificar el estado o calidad de la leche.
-* Consultar los controles realizados.
+* Registrar incidencias detectadas en la recepción.
 
-### 💰 Gestión de pagos
+###  Responsable administrativo
 
-* Registrar el precio por litro.
-* Calcular el monto correspondiente a cada entrega.
-* Consultar los montos acumulados por productor.
-* Registrar el estado de los pagos.
+Encargado de la información económica relacionada con los productores.
 
-### 📊 Reportes
+**Funciones principales:**
 
-* Reporte de producción diaria.
-* Reporte de producción semanal.
-* Reporte de producción mensual.
-* Reporte por productor.
-* Cantidad total de litros recolectados.
-* Montos a pagar a los productores.
+* Consultar entregas.
+* Consultar cantidades acumuladas.
+* Calcular montos correspondientes.
+* Registrar pagos.
+* Generar reportes administrativos.
 
 ---
 
-## 🛠️ Tecnologías
+# ⚙️ 6. Módulos del sistema
 
-El proyecto utiliza las siguientes tecnologías:
+## 6.1 Gestión de productores
 
-* **Java** — Lenguaje principal de programación.
-* **MySQL** — Sistema gestor de base de datos.
-* **Git** — Sistema de control de versiones.
-* **GitHub** — Plataforma para alojar y gestionar el repositorio.
+Permitirá administrar la información de las personas que proporcionan la leche.
 
-### Tecnologías adicionales
+**Funciones:**
 
-> Esta sección se actualizará conforme avance el desarrollo del proyecto.
+* Registrar productor.
+* Modificar productor.
+* Consultar productor.
+* Buscar productor.
+* Activar o desactivar productor.
+* Consultar historial de entregas.
 
 ---
 
-## 🗂️ Estructura del proyecto
+## 6.2 Gestión de rutas
 
-La estructura del proyecto será organizada de acuerdo con las necesidades del sistema.
+Permitirá organizar las rutas utilizadas para realizar la recolección.
+
+**Funciones:**
+
+* Registrar rutas.
+* Modificar rutas.
+* Consultar rutas.
+* Asociar productores a una ruta.
+* Registrar responsable de la ruta.
+* Consultar historial de rutas.
+
+---
+
+## 6.3 Gestión de recolección
+
+Permitirá registrar la leche recolectada directamente en campo.
+
+**Información considerada:**
+
+* Productor.
+* Fecha.
+* Hora.
+* Ruta.
+* Responsable.
+* Cantidad recolectada.
+* Observaciones.
+
+---
+
+## 6.4 Gestión de traslado
+
+Permitirá registrar el traslado de la leche desde los puntos de recolección hasta la planta.
+
+**Información considerada:**
+
+* Ruta.
+* Responsable.
+* Vehículo.
+* Fecha y hora de salida.
+* Fecha y hora de llegada.
+* Cantidad transportada.
+* Observaciones.
+* Incidencias.
+
+---
+
+## 6.5 Recepción en planta
+
+Permitirá registrar la llegada de la leche a la planta.
+
+El sistema permitirá relacionar la información de la recolección con la recepción para facilitar el seguimiento de las cantidades.
+
+Por ejemplo:
+
+```text
+Productor
+    ↓
+Recolección en campo
+    ↓
+Cantidad recolectada
+    ↓
+Traslado
+    ↓
+Recepción en planta
+    ↓
+Cantidad recibida
+    ↓
+Control de calidad
+```
+
+---
+
+## 6.6 Control de calidad
+
+Permitirá registrar los controles realizados sobre la leche recibida.
+
+**Información considerada:**
+
+* Fecha y hora.
+* Lote o recepción.
+* Parámetros de calidad.
+* Resultado.
+* Observaciones.
+* Estado de aceptación o rechazo.
+
+---
+
+## 6.7 Gestión de incidencias
+
+Permitirá registrar situaciones que puedan ocurrir durante el proceso.
+
+Algunos ejemplos son:
+
+* Retraso en la recolección.
+* Problemas con el vehículo.
+* Derrame de leche.
+* Diferencia de cantidades.
+* Problemas durante el traslado.
+* Problemas detectados durante la recepción.
+* Rechazo de leche por control de calidad.
+
+Cada incidencia podrá registrar:
+
+* Fecha.
+* Tipo.
+* Descripción.
+* Lugar.
+* Responsable.
+* Estado.
+* Observaciones.
+
+---
+
+## 6.8 Gestión de pagos
+
+Permitirá administrar la información relacionada con los pagos a los productores.
+
+**Funciones:**
+
+* Registrar precio por litro.
+* Calcular monto por entrega.
+* Consultar monto acumulado.
+* Registrar pagos.
+* Consultar pagos pendientes.
+* Generar historial de pagos.
+
+---
+
+#  7. Reportes
+
+El sistema permitirá obtener información consolidada para facilitar la gestión.
+
+Entre los reportes previstos se encuentran:
+
+### Reportes de producción
+
+* Litros recolectados por día.
+* Litros recolectados por semana.
+* Litros recolectados por mes.
+* Producción por productor.
+* Producción por ruta.
+
+### Reportes de recepción
+
+* Cantidad recolectada.
+* Cantidad recibida.
+* Diferencia entre campo y planta.
+* Recepciones aceptadas.
+* Recepciones rechazadas.
+
+### Reportes administrativos
+
+* Productores activos.
+* Historial de entregas.
+* Montos por productor.
+* Pagos realizados.
+* Pagos pendientes.
+
+### Reportes de incidencias
+
+* Incidencias por fecha.
+* Incidencias por ruta.
+* Incidencias por tipo.
+* Incidencias pendientes de resolver.
+
+---
+
+#  8. Información principal del sistema
+
+El sistema manejará diferentes entidades relacionadas con el proceso de acopio.
+
+```text
+PRODUCTOR
+    │
+    ├── ENTREGAS
+    │       │
+    │       └── RECOLECCIÓN
+    │
+    └── PAGOS
+
+RUTA
+    │
+    ├── PRODUCTORES
+    │
+    └── RECOLECCIÓN
+             │
+             ↓
+          TRASLADO
+             │
+             ↓
+       RECEPCIÓN PLANTA
+             │
+             ├── CONTROL DE CALIDAD
+             │
+             └── INCIDENCIAS
+```
+
+La estructura definitiva será determinada durante la etapa de análisis y diseño de la base de datos.
+
+---
+
+#  9. Requisitos no funcionales preliminares
+
+Además de las funcionalidades principales, el sistema deberá considerar características de calidad.
+
+### Seguridad
+
+El sistema deberá controlar el acceso mediante usuarios y roles.
+
+### Disponibilidad
+
+La información deberá estar disponible para los usuarios autorizados cuando sea requerida.
+
+### Integridad
+
+El sistema deberá evitar registros inconsistentes o incompletos.
+
+### Usabilidad
+
+La interfaz deberá ser sencilla y permitir que los usuarios puedan registrar información de manera rápida.
+
+### Mantenibilidad
+
+El sistema deberá estar organizado de manera que facilite futuras modificaciones y ampliaciones.
+
+### Trazabilidad
+
+Las operaciones importantes deberán poder relacionarse con el usuario, fecha y proceso correspondiente.
+
+---
+
+#  10. Tecnologías
+
+Las tecnologías consideradas para el desarrollo son:
+
+| Tecnología | Utilización                |
+| ---------- | -------------------------- |
+| **Java**   | Desarrollo del sistema     |
+| **MySQL**  | Gestión de base de datos   |
+| **Git**    | Control de versiones       |
+| **GitHub** | Repositorio y colaboración |
+| **UML**    | Modelado del sistema       |
+
+> Las tecnologías adicionales serán incorporadas conforme avance el desarrollo.
+
+---
+
+#  11. Arquitectura del sistema
+
+La arquitectura definitiva será definida durante la etapa de diseño.
+
+De manera preliminar, se plantea una separación por capas:
+
+```text
+┌─────────────────────────────┐
+│       PRESENTACIÓN          │
+│   Interfaz del sistema      │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│       LÓGICA DE NEGOCIO     │
+│ Reglas y procesos del       │
+│ sistema de acopio           │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│       ACCESO A DATOS        │
+│   Persistencia y consultas  │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│          MySQL              │
+│       Base de datos         │
+└─────────────────────────────┘
+```
+
+---
+
+# 12. Control de versiones
+
+El proyecto utilizará **Git y GitHub** para facilitar el trabajo colaborativo.
+
+Se propone una estructura de ramas como:
+
+```text
+main
+│
+└── develop
+     │
+     ├── feature/productores
+     ├── feature/rutas
+     ├── feature/recoleccion
+     ├── feature/recepcion
+     ├── feature/calidad
+     ├── feature/incidencias
+     └── feature/pagos
+```
+
+### Ejemplo
+
+```bash
+git checkout -b feature/productores
+```
+
+```bash
+git add .
+git commit -m "Implementar gestión de productores"
+```
+
+```bash
+git push origin feature/productores
+```
+
+---
+
+#  13. Estructura preliminar del proyecto
 
 ```text
 4bytes/
@@ -117,190 +493,76 @@ La estructura del proyecto será organizada de acuerdo con las necesidades del s
 │   └── ...
 │
 ├── database/
+│   ├── scripts/
 │   └── ...
 │
 ├── docs/
-│   └── ...
+│   ├── requisitos/
+│   ├── uml/
+│   ├── arquitectura/
+│   └── pruebas/
 │
 ├── README.md
 └── ...
 ```
 
-### Descripción de carpetas
-
-| Carpeta     | Descripción                               |
-| ----------- | ----------------------------------------- |
-| `src/`      | Código fuente del sistema                 |
-| `database/` | Scripts y archivos relacionados con MySQL |
-| `docs/`     | Documentación del proyecto                |
-| `README.md` | Información general del proyecto          |
-
-> La estructura puede modificarse durante el desarrollo.
-
 ---
 
-## ⚙️ Requisitos
+#  14. Documentación del proyecto
 
-Para ejecutar el proyecto se necesitará tener instalado:
+Durante el desarrollo se generará documentación relacionada con las diferentes etapas de Ingeniería de Software.
 
-* Java JDK
-* MySQL Server
-* Git
-* Un IDE compatible con Java, como IntelliJ IDEA, Eclipse o NetBeans.
+Entre los documentos previstos:
 
-Las versiones específicas se definirán durante el desarrollo del proyecto.
-
----
-
-## 🚀 Cómo ejecutar el proyecto
-
-### 1. Clonar el repositorio
-
-```bash
-git clone URL_DEL_REPOSITORIO
-```
-
-### 2. Ingresar al proyecto
-
-```bash
-cd 4bytes
-```
-
-### 3. Configurar la base de datos
-
-Crear la base de datos en MySQL y ejecutar los scripts correspondientes.
-
-```sql
-CREATE DATABASE acopio_leche;
-```
-
-> El nombre y estructura definitiva de la base de datos se definirán durante el desarrollo.
-
-### 4. Configurar la conexión
-
-Configurar en el proyecto los datos correspondientes a:
-
-* Servidor MySQL
-* Puerto
-* Usuario
-* Contraseña
-* Nombre de la base de datos
-
-### 5. Ejecutar el proyecto
-
-Abrir el proyecto utilizando el IDE seleccionado y ejecutar la clase principal de la aplicación.
-
----
-
-## 🔀 Control de versiones
-
-El proyecto utiliza **Git y GitHub** para gestionar el código fuente y el trabajo colaborativo.
-
-Se recomienda utilizar ramas para trabajar en nuevas funcionalidades:
-
-```text
-main
-│
-├── develop
-│
-├── feature/productores
-├── feature/acopio
-├── feature/calidad
-└── feature/pagos
-```
-
-### Ejemplo de creación de una rama
-
-```bash
-git checkout -b feature/productores
-```
-
-### Guardar cambios
-
-```bash
-git add .
-git commit -m "Agregar registro de productores"
-```
-
-### Subir cambios
-
-```bash
-git push origin feature/productores
-```
-
----
-
-## 👨‍💻 Metodología de trabajo
-
-El proyecto será desarrollado mediante un proceso colaborativo, aplicando conceptos de **Ingeniería de Software**, tales como:
-
-* Análisis de requisitos.
-* Diseño del sistema.
+* Documento de visión.
+* Requerimientos funcionales.
+* Requerimientos no funcionales.
+* Historias de usuario.
+* Casos de uso.
+* Diagrama de casos de uso.
+* Diagrama de clases.
+* Diagramas de secuencia.
+* Modelo entidad-relación.
 * Diseño de base de datos.
-* Desarrollo.
-* Pruebas.
-* Control de versiones.
-* Documentación.
-* Mantenimiento.
-
-La metodología de desarrollo podrá definirse y documentarse conforme avance el proyecto.
+* Arquitectura del sistema.
+* Plan de pruebas.
+* Manual de usuario.
 
 ---
 
-## 📌 Estado del proyecto
+#  15. Estado del proyecto
 
-**Estado actual:** 🟡 En desarrollo
+**Estado:** 🟡 En desarrollo
 
 ### Progreso
 
-* [x] Creación del repositorio.
-* [x] Definición del equipo.
-* [x] Definición inicial del proyecto.
-* [ ] Análisis de requisitos.
-* [ ] Diseño del sistema.
-* [ ] Diseño de la base de datos.
-* [ ] Desarrollo del sistema.
-* [ ] Implementación de funcionalidades.
+* [x] Formación del equipo.
+* [x] Definición inicial del problema.
+* [x] Definición del proyecto.
+* [x] Identificación preliminar de funcionalidades.
+* [ ] Levantamiento de requisitos.
+* [ ] Requisitos funcionales.
+* [ ] Requisitos no funcionales.
+* [ ] Historias de usuario.
+* [ ] Casos de uso.
+* [ ] Diseño de base de datos.
+* [ ] Diseño UML.
+* [ ] Diseño de arquitectura.
+* [ ] Implementación.
 * [ ] Pruebas.
 * [ ] Documentación final.
 * [ ] Presentación del proyecto.
 
 ---
 
-## 📄 Documentación
+#  16. Integrantes
 
-La documentación del proyecto incluirá:
-
-* Requerimientos funcionales.
-* Requerimientos no funcionales.
-* Historias de usuario.
-* Casos de uso.
-* Diagramas UML.
-* Modelo entidad-relación.
-* Diseño de la base de datos.
-* Arquitectura del sistema.
-* Plan de pruebas.
-* Manual de usuario.
-
-Los documentos serán agregados progresivamente al directorio `docs/`.
-
----
-
-## 🤝 Trabajo colaborativo
-
-Cada integrante participará en las diferentes etapas del proyecto, utilizando GitHub para compartir y controlar los cambios realizados en el código.
-
-Se utilizarán **commits, ramas y pull requests** para facilitar la colaboración y mantener organizado el proyecto.
-
----
-
-## 📜 Licencia
-
-Este proyecto ha sido desarrollado con fines **académicos** para el curso de Ingeniería de Software 1.
-
----
-
-## 📞 Contacto
+| Integrante                        |
+| --------------------------------- |
+| **LINCOL WERNER YUJRA CALLA**     |
+| **GUIDO DANIEL MAYTA SUAÑA**      |
+| **RONALD CONDORI OLAZABAL**       |
+| **DILWERT JHONATAN AGUILAR PAJA** |
 
 **Equipo:** 4bytes
 **Curso:** Ingeniería de Software 1
@@ -308,6 +570,32 @@ Este proyecto ha sido desarrollado con fines **académicos** para el curso de In
 
 ---
 
-## ⭐ Nota
+#  17. Propósito académico
 
-Este proyecto se encuentra en desarrollo. La información, funcionalidades, tecnologías y estructura pueden cambiar conforme avance el análisis y desarrollo del sistema.
+El proyecto **4bytes** ha sido desarrollado con fines académicos para aplicar los conocimientos adquiridos en el curso de **Ingeniería de Software 1**, considerando las diferentes etapas del desarrollo de software:
+
+```text
+Problema
+   ↓
+Análisis
+   ↓
+Requisitos
+   ↓
+Diseño
+   ↓
+Implementación
+   ↓
+Pruebas
+   ↓
+Documentación
+   ↓
+Producto final
+```
+
+El sistema podrá evolucionar durante el desarrollo conforme se obtenga mayor información sobre los procesos reales de la empresa y se definan nuevos requisitos.
+
+---
+
+##  Nota
+
+La información, funcionalidades, arquitectura, tecnologías y estructura descritas en este documento corresponden a una **propuesta inicial** y podrán modificarse durante las etapas de análisis, diseño, implementación y pruebas del proyecto.
