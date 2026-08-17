@@ -1,46 +1,92 @@
-# LactoRuta
+# 4bytes — Sistema de Gestión para el Acopio de Leche
 
-> Registra la recolección de leche en campo, incluso sin señal, y llévala sincronizada hasta la planta.
-
+> Aplicación multiplataforma para gestionar y controlar el proceso de acopio de leche desde la recolección de los productores hasta su recepción en planta.
 
 ## Problema que resuelve
-La empresa recolecta leche de productores de la zona a través de rutas fijas, la traslada a la planta y luego la recibe y controla. Gran parte de este proceso se lleva de forma manual o con información dispersa (cuadernos, hojas sueltas, mensajes), lo que dificulta controlar las entregas, las cantidades exactas recolectadas, el cumplimiento de rutas, las incidencias durante la recolección y los datos de cada productor. Además, no hay una forma clara de comparar lo que se recogió en campo contra lo que finalmente llega y se registra en planta.
+
+La empresa dedicada al acopio de leche trabaja con productores de la zona y realiza actividades de recolección, traslado y recepción de la leche. Parte de esta información se registra manualmente o se encuentra dispersa, dificultando el control de los productores, las cantidades recolectadas, las rutas y las incidencias durante el proceso.
+
+4bytes busca centralizar esta información y facilitar el seguimiento de la leche recolectada en campo hasta su llegada y recepción en la planta.
 
 ## Público objetivo
-- **Recolectores/choferes de ruta**: registran cada entrega directamente en el punto de recolección, muchas veces sin conexión a internet.
-- **Personal de planta**: recibe la leche, la contrasta contra lo recolectado en campo y controla incidencias.
-- **Administración**: consulta el estado de productores, rutas e histórico de entregas.
+
+La aplicación está dirigida a empresas o centros de acopio de leche que trabajan con productores de la zona.
+
+Los principales usuarios serán:
+
+* Personal encargado de la recolección.
+* Personal encargado de la recepción en planta.
+* Administradores del centro de acopio.
+* Responsables del control de calidad.
+
+La aplicación podrá utilizarse principalmente durante las actividades de recolección en campo y recepción de la leche en planta.
 
 ## Funcionalidades previstas
-- Iniciar sesión según el rol (recolector, planta, administración).
-- Registrar una recolección: productor, cantidad, ruta, fecha/hora.
-- Registrar incidencias durante la recolección (leche rechazada, faltante, retraso, etc.).
-- Listar y filtrar recolecciones por ruta, productor o fecha.
-- Registrar la recepción en planta y compararla contra lo recolectado en campo.
-- Gestionar el catálogo de productores (alta, edición, datos de contacto y ruta asignada).
-- Trabajar sin conexión en campo y sincronizar automáticamente al recuperar señal.
+
+* **F1:** Registrar, listar, editar y eliminar productores.
+* **F2:** Registrar y consultar las entregas de leche realizadas por cada productor.
+* **F3:** Registrar las cantidades de leche recolectadas durante cada jornada.
+* **F4:** Registrar y consultar las rutas de recolección.
+* **F5:** Registrar la recepción de leche en la planta.
+* **F6:** Comparar la cantidad recolectada con la cantidad recibida en planta.
+* **F7:** Registrar incidencias ocurridas durante la recolección o traslado.
+* **F8:** Registrar información básica del control de calidad.
+* **F9:** Permitir el inicio de sesión de los usuarios.
+* **F10:** Permitir trabajar sin conexión a Internet y sincronizar la información cuando vuelva la conexión.
+* **F11:** Consultar el historial de entregas y recolecciones.
+* **F12:** Mostrar información básica sobre las cantidades recolectadas y recibidas.
 
 ## Entidad principal del CRUD
-**Recolección**
-- id
-- productor (relación con Productor)
-- ruta
-- cantidad (litros)
-- fecha y hora
-- estado (recolectado / en tránsito / recibido en planta)
-- incidencia (opcional: tipo y descripción)
+
+### Productor
+
+La entidad principal del CRUD será **Productor**, debido a que representa a las personas que entregan leche al centro de acopio.
+
+### Atributos tentativos
+
+* `idProductor`
+* `nombres`
+* `apellidos`
+* `dni`
+* `telefono`
+* `direccion`
+* `comunidad`
+* `estado`
+
+La entidad **Productor** estará relacionada posteriormente con las entregas y registros de recolección realizados durante el proceso de acopio.
 
 ## Capacidad nativa prevista
-Geolocalización (ubicar puntos de recolección y rutas), cámara/QR (identificar rápidamente al productor) y notificaciones (avisos de incidencias o confirmación de recepción en planta).
 
-## Equipo [nombre del equipo]
-| Integrante | Código | Rol semana 1 |
-|---|---|---|
-| LINCOL WERNER YUJRA CALLA | 202411737 | Coordinación |
-| GUIDO DANIEL MAYTA SUAÑA | 202413212 | QA y documentación |
-| RONALD CONDORI OLAZABAL | 202410814 | Lógica y datos |
-| DILWERT JHONATAN AGUILAR PAJA |202414021 | UI |
+###  Ubicación
+
+La aplicación utilizará la ubicación del dispositivo para registrar o consultar la ubicación de los puntos de recolección y apoyar el seguimiento de las rutas.
+
+Esta capacidad permitirá relacionar una recolección con su ubicación y facilitar el control de las actividades realizadas en campo.
+
+## Equipo 4bytes
+
+| Integrante                    | Código        | Rol semana 1       |
+| ----------------------------- | ------------- | ------------------ |
+| LINCOL WERNER YUJRA CALLA     | Por completar | Coordinación       |
+| GUIDO DANIEL MAYTA SUAÑA      | Por completar | Lógica y datos     |
+| RONALD CONDORI OLAZABAL       | Por completar | UI                 |
+| DILWERT JHONATAN AGUILAR PAJA | Por completar | QA y documentación |
 
 ## Tecnologías
-Kotlin Multiplatform · Compose Multiplatform · targets Android y Desktop
 
+* **Kotlin Multiplatform**
+* **Compose Multiplatform**
+* **Kotlin**
+* **Android**
+* **Desktop**
+* **Git**
+* **GitHub**
+
+La aplicación será desarrollada utilizando Kotlin Multiplatform y Compose Multiplatform, de acuerdo con las tecnologías establecidas para el proyecto.
+
+### Targets
+
+* Android
+* Desktop
+
+> iOS preparado: requiere macOS para compilar.
