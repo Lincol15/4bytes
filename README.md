@@ -70,7 +70,7 @@ Esta capacidad permitirá relacionar una recolección con su ubicación y facili
 | LINCOL WERNER YUJRA CALLA     | Por completar | Coordinación       |
 | GUIDO DANIEL MAYTA SUAÑA      | Por completar | Lógica y datos     |
 | RONALD CONDORI OLAZABAL       | Por completar | UI                 |
-| DILWERT JHONATAN AGUILAR PAJA | Por completar | QA y documentación |
+| DILWER JHONATAN AGUILAR PAJA | Por completar | QA y documentación |
 
 ## Tecnologías
 
