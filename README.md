@@ -1,778 +1,160 @@
-# 🥛 4bytes — Sistema de Gestión para el Acopio de Leche
+# 4bytes — Sistema de Gestión para el Acopio de Leche
 
-![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-yellow)
-![Proyecto](https://img.shields.io/badge/Proyecto-Acad%C3%A9mico-blue)
-![Curso](https://img.shields.io/badge/Curso-Ingenier%C3%ADa%20de%20Software%201-green)
+> Aplicación multiplataforma para gestionar y controlar el proceso de acopio de leche desde la recolección de los productores hasta su recepción en planta.
 
-##  1. Información general
+## Problema que resuelve
 
-**4bytes** es un proyecto integrador desarrollado para el curso de **Ingeniería de Software 1**.
+La empresa dedicada al acopio de leche trabaja con productores de la zona y realiza actividades de recolección, traslado y recepción de la leche. Actualmente, parte de esta información puede registrarse de forma manual o encontrarse dispersa, dificultando el control de los productores, las cantidades recolectadas, las rutas y las incidencias durante el proceso.
 
-El proyecto consiste en el diseño y desarrollo de una **aplicación móvil para la gestión del proceso de acopio de leche**, orientada a una empresa que trabaja con productores de la zona.
+4bytes busca centralizar esta información y facilitar el seguimiento de la leche desde su recolección en campo hasta su recepción en la planta, permitiendo mejorar el control y reducir las diferencias de información durante el proceso.
 
-La aplicación busca digitalizar y centralizar la información generada durante el proceso de:
+## Público objetivo
 
-**Productor → Recolección → Traslado → Recepción en planta → Control de calidad → Incidencias → Pagos → Reportes**
+La aplicación está dirigida principalmente a empresas o centros de acopio de leche que trabajan con productores de la zona.
 
----
+Los principales usuarios serán:
 
-# 2. Integrantes del grupo
+- Personal encargado de la recolección.
+- Personal encargado de la recepción en planta.
+- Administradores del centro de acopio.
+- Responsables del control de calidad.
 
-| N.º | Integrante                        |
-| --: | --------------------------------- |
-|   1 | **LINCOL WERNER YUJRA CALLA**     |
-|   2 | **GUIDO DANIEL MAYTA SUAÑA**      |
-|   3 | **RONALD CONDORI OLAZABAL**       |
-|   4 | **DILWERT JHONATAN AGUILAR PAJA** |
+La aplicación será utilizada principalmente durante las actividades de recolección en campo y recepción de la leche en planta.
 
-**Nombre del grupo:** 4bytes
-**Curso:** Ingeniería de Software 1
-**Tipo de proyecto:** Proyecto integrador académico
+## Funcionalidades previstas
 
----
+- **F1:** Registrar, listar, editar y eliminar productores.
+- **F2:** Registrar y consultar las entregas de leche realizadas por cada productor.
+- **F3:** Registrar el volumen total de leche recolectado durante cada jornada.
+- **F4:** Registrar y consultar las rutas de recolección.
+- **F5:** Registrar la recepción de leche en la planta.
+- **F6:** Comparar la cantidad de leche recolectada con la cantidad recibida en planta.
+- **F7:** Registrar incidencias ocurridas durante la recolección o traslado.
+- **F8:** Registrar información básica del control de calidad.
+- **F9:** Permitir el inicio de sesión de los usuarios.
+- **F10:** Permitir trabajar sin conexión a Internet y sincronizar la información cuando vuelva la conexión.
+- **F11:** Consultar el historial de entregas y recolecciones.
+- **F12:** Mostrar información básica sobre las cantidades recolectadas y recibidas.
 
-#  3. Propuesta de la aplicación
+## Entidad principal del CRUD
 
-Se propone desarrollar una **aplicación móvil para gestionar y controlar el proceso de acopio de leche**, permitiendo registrar la información desde el momento en que la leche es recolectada de los productores hasta su llegada y recepción en la planta.
+### Productor
 
-La aplicación permitirá centralizar información que actualmente puede encontrarse registrada de manera manual o dispersa en diferentes medios.
+La entidad principal del CRUD será **Productor**, debido a que representa a las personas que entregan leche al centro de acopio.
 
-El sistema permitirá conocer:
+### Atributos tentativos
 
-* Qué productor realizó una entrega.
-* Cuántos litros fueron recolectados.
-* Cuándo se realizó la recolección.
-* Qué ruta fue utilizada.
-* Quién realizó la recolección.
-* Cuándo se realizó el traslado.
-* Cuánto llegó finalmente a la planta.
-* Si existieron diferencias entre la cantidad recolectada y recibida.
-* Qué controles de calidad se realizaron.
-* Qué incidencias ocurrieron.
-* Cuánto corresponde pagar a cada productor.
-* Cuáles son los resultados y estadísticas del proceso.
+- `idProductor`
+- `nombres`
+- `apellidos`
+- `dni`
+- `telefono`
+- `direccion`
+- `comunidad`
+- `estado`
 
----
+La entidad **Productor** estará relacionada con los registros de entrega y recolección realizados durante el proceso de acopio.
 
-#  4. Problema identificado
+## Capacidad nativa prevista
 
-La empresa objeto del proyecto se dedica al **acopio de leche**, trabajando directamente con productores de la zona.
+### 📍 GPS / Geolocalización
 
-El proceso comprende diferentes actividades, como la recolección de leche, el traslado hacia la planta y posteriormente la recepción y control de la materia prima.
+La aplicación utilizará la ubicación del dispositivo para registrar la ubicación de los puntos de recolección y apoyar el seguimiento de las rutas.
 
-Durante este proceso, parte de la información puede ser registrada de manera manual o encontrarse distribuida en diferentes medios, generando dificultades para mantener un control completo de las operaciones.
+Esta capacidad permitirá relacionar una jornada de recolección con su ubicación y facilitar el control de las actividades realizadas en campo.
 
-Entre los principales problemas identificados se encuentran:
+## Checklist de viabilidad
 
-* Información dispersa de los productores.
-* Registro manual de las entregas.
-* Dificultad para controlar las cantidades recolectadas.
-* Dificultad para realizar seguimiento de las rutas.
-* Falta de un historial centralizado de las recolecciones.
-* Dificultad para registrar y consultar incidencias.
-* Problemas para comparar la cantidad recolectada en campo con la cantidad recibida en planta.
-* Dificultad para consultar rápidamente la información de los productores.
-* Mayor posibilidad de errores durante el registro y consolidación de información.
-* Dificultad para obtener reportes para la toma de decisiones.
+| Criterio | Tipo | Cumple |
+|---|---|---|
+| Tiene una entidad principal clara para el CRUD: Productor | Obligatorio | Sí |
+| Requiere usuarios que inician sesión | Obligatorio | Sí |
+| Tiene sentido utilizarla sin conexión a Internet | Obligatorio | Sí |
+| El alcance es realista para un semestre | Obligatorio | Sí |
+| Tiene entre 4 y 6 pantallas principales | Obligatorio | Sí |
+| Cuenta con 1 o 2 entidades secundarias como máximo | Obligatorio | Sí |
+| Existe un usuario real para validar la propuesta | Recomendado | Sí |
+| Utiliza una capacidad nativa: GPS / ubicación | Recomendado | Sí |
 
-##  Problema principal
+## Pantallas principales previstas
 
-> **La empresa presenta dificultades para centralizar, controlar y realizar seguimiento de la información generada durante el proceso de acopio de leche debido al uso de registros manuales o información dispersa.**
+La aplicación tendrá inicialmente entre 4 y 6 pantallas principales:
 
----
+1. **Inicio de sesión**
+2. **Panel principal**
+3. **Gestión de productores**
+4. **Registro de recolección**
+5. **Rutas y ubicación**
+6. **Recepción en planta**
 
-#  5. Solución propuesta
+Las demás funcionalidades se integrarán dentro de estas pantallas para mantener un alcance realista durante el semestre.
 
-Para solucionar esta problemática se propone desarrollar una **aplicación móvil de gestión del acopio de leche**.
+## Flujo general de la aplicación
 
-La aplicación permitirá centralizar la información en un sistema organizado, facilitando el registro, consulta y seguimiento de las diferentes actividades.
+El proceso principal de 4bytes seguirá el siguiente flujo:
 
-La solución permitirá realizar una trazabilidad del proceso:
+**Productor → Recolección → Ruta → Traslado → Recepción en planta → Control de calidad → Incidencias → Historial**
 
-```text
-PRODUCTOR
-    │
-    ▼
-RECOLECCIÓN
-    │
-    ▼
-TRASLADO
-    │
-    ▼
-RECEPCIÓN EN PLANTA
-    │
-    ▼
-CONTROL DE CALIDAD
-    │
-    ├──────────────► INCIDENCIAS
-    │
-    ▼
-REGISTRO Y CONSOLIDACIÓN
-    │
-    ▼
-PAGOS Y REPORTES
-```
+El sistema permitirá registrar la información durante la recolección y posteriormente comparar la cantidad recolectada con la cantidad recibida en planta.
 
-De esta manera, la empresa podrá disponer de información centralizada y organizada para realizar un mejor seguimiento del proceso de acopio.
+## Alcance inicial
 
----
+El proyecto se desarrollará progresivamente durante las diferentes unidades del curso.
 
-#  6. Objetivo general
+El alcance inicial comprende:
 
-Desarrollar una aplicación móvil que permita **gestionar, centralizar y controlar la información relacionada con el proceso de acopio de leche**, desde la recolección realizada a los productores hasta la recepción y control en la planta.
+1. Gestión de productores.
+2. Registro de entregas y recolecciones.
+3. Control de cantidades recolectadas.
+4. Gestión básica de rutas.
+5. Registro de recepción en planta.
+6. Registro de incidencias.
+7. Control básico de calidad.
+8. Funcionamiento sin conexión y sincronización posterior.
+9. Inicio de sesión de usuarios.
+10. Consulta del historial de operaciones.
 
----
+El proyecto se mantendrá dentro de un alcance realista para su desarrollo durante el semestre.
 
-#  7. Objetivos específicos
+## Equipo 4bytes
 
-* Registrar y administrar la información de los productores.
-* Registrar las entregas realizadas por cada productor.
-* Registrar la cantidad de leche recolectada.
-* Registrar las rutas utilizadas durante la recolección.
-* Registrar la información del responsable de la recolección.
-* Registrar el traslado de la leche hacia la planta.
-* Registrar la cantidad de leche recibida en la planta.
-* Comparar la cantidad recolectada con la cantidad recibida.
-* Registrar controles de calidad.
-* Registrar incidencias ocurridas durante el proceso.
-* Mantener un historial de las operaciones realizadas.
-* Facilitar la gestión de los pagos correspondientes a los productores.
-* Generar reportes para apoyar la toma de decisiones.
+| Integrante | Código | Rol semana 1 |
+|---|---|---|
+| **LINCOL WERNER YUJRA CALLA** | Por completar | Coordinación |
+| **GUIDO DANIEL MAYTA SUAÑA** | Por completar | Lógica y datos |
+| **RONALD CONDORI OLAZABAL** | Por completar | UI |
+| **DILWERT JHONATAN AGUILAR PAJA** | Por completar | QA y documentación |
 
----
+## Tecnologías
 
-# 8. Usuarios de la aplicación
+- **Kotlin Multiplatform**
+- **Compose Multiplatform**
+- **Kotlin**
+- **Android**
+- **Desktop**
+- **Git**
+- **GitHub**
 
-La aplicación estará orientada a los diferentes usuarios que participan en el proceso de acopio.
+La aplicación será desarrollada utilizando **Kotlin Multiplatform** y **Compose Multiplatform**, permitiendo compartir código entre diferentes plataformas.
 
-##  Administrador
+### Targets
 
-Podrá:
+- Android
+- Desktop
 
-* Gestionar usuarios.
-* Registrar y modificar productores.
-* Gestionar rutas.
-* Consultar información.
-* Consultar reportes.
-* Administrar parámetros del sistema.
+> iOS queda preparado como posibilidad futura, pero su compilación requiere un entorno macOS.
 
-##  Responsable de recolección
+## Repositorio
 
-Podrá:
+El proyecto será gestionado mediante Git y GitHub utilizando una estrategia de trabajo basada en ramas.
 
-* Consultar productores asignados.
-* Consultar rutas.
-* Registrar recolecciones.
-* Registrar cantidades recolectadas.
-* Registrar fecha y hora.
-* Registrar incidencias.
-* Consultar el historial de recolecciones.
+- `main`: rama principal y estable.
+- `develop`: rama de desarrollo.
 
-##  Responsable de planta
+Los cambios realizados durante las siguientes semanas serán integrados progresivamente mediante `pull requests`.
 
-Podrá:
+## Objetivo del proyecto
 
-* Registrar la recepción de leche.
-* Registrar cantidades recibidas.
-* Realizar controles de calidad.
-* Registrar observaciones.
-* Registrar incidencias.
-* Consultar información de las recolecciones.
+El objetivo de 4bytes es desarrollar una aplicación multiplataforma que permita centralizar y controlar la información relacionada con el acopio de leche, facilitando el seguimiento de los productores, las recolecciones, las rutas, las cantidades transportadas y la recepción de la leche en planta.
 
-##  Responsable administrativo
-
-Podrá:
-
-* Consultar entregas.
-* Consultar cantidades acumuladas.
-* Gestionar precios.
-* Calcular montos correspondientes.
-* Registrar pagos.
-* Consultar pagos pendientes.
-* Generar reportes administrativos.
-
----
-
-#  9. Funcionalidades principales
-
-## 9.1 Gestión de productores
-
-Permitirá:
-
-* Registrar productores.
-* Modificar información.
-* Consultar productores.
-* Buscar productores.
-* Activar o desactivar productores.
-* Consultar historial de entregas.
-
-### Datos principales
-
-* Código del productor.
-* Nombres y apellidos.
-* Documento de identidad.
-* Teléfono.
-* Dirección.
-* Comunidad o zona.
-* Estado.
-
----
-
-## 9.2 Gestión de rutas
-
-Permitirá:
-
-* Registrar rutas.
-* Modificar rutas.
-* Consultar rutas.
-* Asociar productores a una ruta.
-* Registrar responsable.
-* Consultar historial.
-
----
-
-## 9.3 Registro de recolección
-
-Permitirá registrar las actividades realizadas en campo.
-
-### Información
-
-* Productor.
-* Ruta.
-* Responsable.
-* Fecha.
-* Hora.
-* Cantidad de litros.
-* Observaciones.
-
----
-
-## 9.4 Gestión del traslado
-
-Permitirá registrar el traslado desde los puntos de recolección hasta la planta.
-
-### Información
-
-* Ruta.
-* Responsable.
-* Vehículo.
-* Fecha y hora de salida.
-* Fecha y hora de llegada.
-* Cantidad transportada.
-* Observaciones.
-* Incidencias.
-
----
-
-## 9.5 Recepción en planta
-
-Permitirá registrar la cantidad de leche que llega a la planta.
-
-El sistema podrá relacionar:
-
-**Cantidad recolectada → Cantidad transportada → Cantidad recibida**
-
-Esto permitirá detectar diferencias durante el proceso.
-
-### Ejemplo
-
-```text
-Cantidad recolectada: 500 litros
-Cantidad recibida:    490 litros
-Diferencia:            10 litros
-```
-
-La diferencia podrá ser registrada y posteriormente analizada.
-
----
-
-## 9.6 Control de calidad
-
-Permitirá registrar los resultados de los controles realizados sobre la leche recibida.
-
-### Información
-
-* Fecha.
-* Hora.
-* Recepción.
-* Parámetros evaluados.
-* Resultado.
-* Estado.
-* Observaciones.
-
-El resultado podrá clasificarse, según los criterios definidos por la empresa, como:
-
-* Aprobado.
-* Observado.
-* Rechazado.
-
----
-
-## 9.7 Gestión de incidencias
-
-Permitirá registrar problemas ocurridos durante las diferentes etapas.
-
-### Ejemplos
-
-* Retraso en la recolección.
-* Problemas con el vehículo.
-* Derrame de leche.
-* Diferencia de cantidades.
-* Problemas durante el traslado.
-* Problemas durante la recepción.
-* Problemas de calidad.
-
-Cada incidencia podrá registrar:
-
-* Tipo.
-* Fecha.
-* Lugar.
-* Descripción.
-* Responsable.
-* Estado.
-* Observaciones.
-
----
-
-## 9.8 Gestión de pagos
-
-Permitirá gestionar la información económica relacionada con los productores.
-
-### Funcionalidades
-
-* Registrar precio por litro.
-* Calcular monto de una entrega.
-* Consultar monto acumulado.
-* Registrar pagos.
-* Consultar pagos pendientes.
-* Consultar historial de pagos.
-
----
-
-#  10. Reportes
-
-La aplicación permitirá generar información para facilitar el análisis y la toma de decisiones.
-
-## Reportes de producción
-
-* Producción diaria.
-* Producción semanal.
-* Producción mensual.
-* Producción por productor.
-* Producción por ruta.
-
-## Reportes de recepción
-
-* Cantidad recolectada.
-* Cantidad recibida.
-* Diferencias detectadas.
-* Recepciones aceptadas.
-* Recepciones rechazadas.
-
-## Reportes administrativos
-
-* Productores registrados.
-* Productores activos.
-* Historial de entregas.
-* Montos por productor.
-* Pagos realizados.
-* Pagos pendientes.
-
-## Reportes de incidencias
-
-* Incidencias por fecha.
-* Incidencias por ruta.
-* Incidencias por tipo.
-* Incidencias pendientes.
-
----
-
-# 11. Flujo principal de la aplicación
-
-El funcionamiento general será:
-
-```text
-1. Registrar productor
-        ↓
-2. Asignar ruta
-        ↓
-3. Realizar recolección
-        ↓
-4. Registrar cantidad recolectada
-        ↓
-5. Realizar traslado
-        ↓
-6. Registrar llegada a planta
-        ↓
-7. Registrar cantidad recibida
-        ↓
-8. Realizar control de calidad
-        ↓
-9. Registrar incidencias
-        ↓
-10. Consolidar información
-        ↓
-11. Gestionar pago
-        ↓
-12. Generar reportes
-```
-
----
-
-#  12. Plataforma tecnológica
-
-Para la aplicación móvil se analizaron tres alternativas de desarrollo multiplataforma:
-
-* Kotlin Multiplatform (KMP)
-* Flutter
-* React Native
-
-La comparación permitirá seleccionar la tecnología más adecuada para las necesidades del proyecto.
-
----
-
-#  13. Cuadro comparativo: KMP vs Flutter vs React Native
-
-| Criterio                     | Kotlin Multiplatform (KMP)                              | Flutter                                         | React Native                               |
-| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------ |
-| Desarrollador / organización | JetBrains                                               | Google                                          | Meta / comunidad                           |
-| Lenguaje principal           | Kotlin                                                  | Dart                                            | JavaScript / TypeScript                    |
-| Android                      | Sí                                                      | Sí                                              | Sí                                         |
-| iOS                          | Sí                                                      | Sí                                              | Sí                                         |
-| Código compartido            | Flexible, según arquitectura                            | Alto                                            | Alto                                       |
-| Interfaz de usuario          | Puede ser nativa o compartida con Compose Multiplatform | Widgets de Flutter                              | Componentes nativos                        |
-| Rendimiento                  | Cercano al nativo                                       | Alto                                            | Alto                                       |
-| Integración con APIs nativas | Muy buena                                               | Buena                                           | Buena                                      |
-| Curva de aprendizaje         | Media                                                   | Media                                           | Media                                      |
-| Ecosistema                   | En crecimiento                                          | Amplio                                          | Amplio                                     |
-| Enfoque principal            | Compartir lógica y/o UI manteniendo flexibilidad nativa | Desarrollo multiplataforma desde un código base | Desarrollo de interfaces nativas con React |
-| Adecuado para 4bytes         | Sí                                                      | **Sí**                                          | Sí                                         |
-
-Kotlin Multiplatform permite compartir código entre diferentes plataformas y ofrece la posibilidad de compartir lógica de negocio manteniendo interfaces nativas o compartir también la interfaz mediante Compose Multiplatform.
-
-Flutter está orientado al desarrollo de aplicaciones multiplataforma desde un único código base y proporciona un conjunto de widgets y herramientas para construir interfaces.
-
-React Native permite desarrollar aplicaciones para Android e iOS utilizando React, JavaScript o TypeScript, y sus componentes se representan mediante elementos nativos de las plataformas.
-
----
-
-#  14. Tecnología propuesta
-
-Después de realizar la comparación inicial, se propone utilizar **Flutter** para el desarrollo de la aplicación móvil de 4bytes.
-
-## ¿Por qué Flutter?
-
-Flutter resulta adecuado para el proyecto debido a que:
-
-* Permite desarrollar aplicaciones multiplataforma desde un código base.
-* Cuenta con una amplia documentación.
-* Proporciona componentes de interfaz mediante widgets.
-* Facilita la creación de interfaces personalizadas.
-* Permite desarrollar para Android e iOS.
-* Es apropiado para proyectos que necesitan avanzar rápidamente con una aplicación móvil.
-* Cuenta con recursos de aprendizaje oficiales y una comunidad amplia.
-
-La documentación oficial de Flutter dispone de guías de inicio, catálogo de widgets, documentación de API y recursos de aprendizaje para desarrollar aplicaciones multiplataforma.
-
-> **Nota:** La selección de Flutter corresponde a una decisión preliminar y podrá ser revisada por el equipo durante la etapa de análisis técnico.
-
----
-
-#  15. Tecnologías previstas
-
-### Aplicación móvil
-
-**Flutter**
-
-### Lenguaje
-
-**Dart**
-
-### Backend
-
-Por definir durante la etapa de diseño.
-
-### Base de datos
-
-**MySQL**
-
-### Control de versiones
-
-**Git**
-
-### Repositorio
-
-**GitHub**
-
-### Modelado
-
-**UML**
-
----
-
-#  16. Arquitectura preliminar
-
-La arquitectura definitiva será determinada durante la etapa de diseño.
-
-De manera preliminar se plantea:
-
-```text
-┌─────────────────────────────┐
-│       APLICACIÓN MÓVIL      │
-│           Flutter           │
-└──────────────┬──────────────┘
-               │
-               │ HTTP / API REST
-               ▼
-┌─────────────────────────────┐
-│           BACKEND           │
-│      Lógica de negocio      │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│          MySQL              │
-│       Base de datos         │
-└─────────────────────────────┘
-```
-
----
-
-# 17. Entidades preliminares
-
-Durante el análisis se consideran inicialmente las siguientes entidades:
-
-```text
-Usuario
-Productor
-Ruta
-Recolección
-Traslado
-Recepción
-ControlCalidad
-Incidencia
-Pago
-```
-
-Las entidades y relaciones definitivas serán establecidas durante el diseño de la base de datos.
-
----
-
-#  18. Estructura del repositorio
-
-```text
-4bytes/
-│
-├── README.md
-│
-├── docs/
-│   ├── acta/
-│   │   └── acta-conformacion.md
-│   │
-│   ├── requisitos/
-│   │   ├── requisitos-funcionales.md
-│   │   └── requisitos-no-funcionales.md
-│   │
-│   ├── uml/
-│   │   ├── casos-uso/
-│   │   ├── clases/
-│   │   └── secuencia/
-│   │
-│   ├── arquitectura/
-│   │   └── arquitectura.md
-│   │
-│   └── pruebas/
-│
-├── mobile/
-│   └── ...
-│
-├── backend/
-│   └── ...
-│
-└── database/
-    ├── scripts/
-    └── ...
-```
-
----
-
-#  19. Control de versiones
-
-El proyecto utilizará Git y GitHub para administrar el código fuente y facilitar el trabajo colaborativo.
-
-Se propone utilizar la siguiente estrategia:
-
-```text
-main
-│
-└── develop
-     │
-     ├── feature/productores
-     ├── feature/rutas
-     ├── feature/recoleccion
-     ├── feature/traslado
-     ├── feature/recepcion
-     ├── feature/calidad
-     ├── feature/incidencias
-     └── feature/pagos
-```
-
-### Crear una rama
-
-```bash
-git checkout -b feature/productores
-```
-
-### Registrar cambios
-
-```bash
-git add .
-git commit -m "Agregar gestión de productores"
-```
-
-### Subir cambios
-
-```bash
-git push origin feature/productores
-```
-
----
-
-#  20. Acta de conformación
-
-El equipo **4bytes** está conformado por cuatro integrantes para el desarrollo del proyecto integrador del curso de Ingeniería de Software 1.
-
-Los integrantes se comprometen a participar en las actividades de análisis, diseño, desarrollo, pruebas y documentación del proyecto.
-
-### Integrantes
-
-1. LINCOL WERNER YUJRA CALLA
-2. GUIDO DANIEL MAYTA SUAÑA
-3. RONALD CONDORI OLAZABAL
-4. DILWERT JHONATAN AGUILAR PAJA
-
-**Nombre del proyecto:** Sistema de Gestión para el Acopio de Leche
-
-**Equipo:** 4bytes
-
-**Curso:** Ingeniería de Software 1
-
----
-
-# 21. Estado del proyecto
-
-**Estado actual:** 🟡 En desarrollo
-
-### Progreso
-
-* [x] Conformación del grupo.
-* [x] Definición del nombre del proyecto.
-* [x] Identificación del problema.
-* [x] Propuesta de solución.
-* [x] Definición preliminar de funcionalidades.
-* [x] Comparación inicial de tecnologías móviles.
-* [x] Selección preliminar de Flutter.
-* [ ] Levantamiento detallado de requisitos.
-* [ ] Requisitos funcionales.
-* [ ] Requisitos no funcionales.
-* [ ] Historias de usuario.
-* [ ] Casos de uso.
-* [ ] Diagrama de clases.
-* [ ] Diagramas de secuencia.
-* [ ] Diseño de base de datos.
-* [ ] Diseño de arquitectura.
-* [ ] Desarrollo de la aplicación.
-* [ ] Desarrollo del backend.
-* [ ] Integración con base de datos.
-* [ ] Pruebas.
-* [ ] Documentación final.
-* [ ] Presentación del proyecto.
-
----
-
-#  22. Documentación y fuentes
-
-La documentación del proyecto se desarrollará progresivamente durante las diferentes etapas de Ingeniería de Software.
-
-Las principales fuentes técnicas utilizadas para la comparación de tecnologías son:
-
-### Kotlin Multiplatform
-
-JetBrains. (2026). *What is Kotlin Multiplatform*. Kotlin Documentation.
-
-[Kotlin Multiplatform Documentation](https://kotlinlang.org/docs/multiplatform/kmp-overview.html?utm_source=chatgpt.com)
-
-### Flutter
-
-Google. (2026). *Flutter documentation*. Flutter.
-
-[Flutter Documentation](https://docs.flutter.dev/?utm_source=chatgpt.com)
-
-### React Native
-
-Meta Open Source. (2026). *React Native*. React Native.
-
-[React Native Documentation](https://reactnative.dev/?utm_source=chatgpt.com)
-
----
-
-# 23. Propósito académico
-
-El proyecto **4bytes** se desarrolla con fines académicos para aplicar los conocimientos adquiridos en el curso de **Ingeniería de Software 1**.
-
-El proyecto contempla las principales etapas del desarrollo de software:
-
-```text
-Identificación del problema
-          ↓
-Análisis
-          ↓
-Requisitos
-          ↓
-Diseño
-          ↓
-Implementación
-          ↓
-Pruebas
-          ↓
-Documentación
-          ↓
-Producto final
-```
-
-El sistema podrá evolucionar conforme avance el proyecto y se obtenga información más detallada sobre los procesos reales de la empresa.
-
----
-
-#  24. Resumen del proyecto
-
-| Aspecto                        | Descripción                                                        |
-| ------------------------------ | ------------------------------------------------------------------ |
-| **Proyecto**                   | 4bytes                                                             |
-| **Aplicación**                 | Sistema de Gestión para el Acopio de Leche                         |
-| **Problema**                   | Información manual y dispersa durante el proceso de acopio         |
-| **Solución**                   | Aplicación móvil para centralizar y controlar la información       |
-| **Usuarios**                   | Administrador, recolector, responsable de planta y administrativo  |
-| **Proceso**                    | Recolección → Traslado → Recepción → Calidad → Incidencias → Pagos |
-| **Tecnología móvil propuesta** | Flutter                                                            |
-| **Lenguaje**                   | Dart                                                               |
-| **Base de datos**              | MySQL                                                              |
-| **Repositorio**                | GitHub                                                             |
-| **Control de versiones**       | Git                                                                |
-| **Curso**                      | Ingeniería de Software 1                                           |
-| **Estado**                     | En desarrollo                                                      |
-
----
-
-##  25. Conclusión
-
-**4bytes** propone una solución tecnológica para mejorar la gestión del proceso de acopio de leche mediante la digitalización y centralización de la información.
-
-La aplicación permitirá realizar un seguimiento de las operaciones desde el productor y la recolección en campo hasta la recepción en planta, incluyendo el traslado, control de calidad, registro de incidencias, pagos y generación de reportes.
-
-Con esta solución se busca reducir la dependencia de registros manuales, mejorar la organización de la información, facilitar la trazabilidad del proceso y proporcionar información útil para la gestión y toma de decisiones.
-
----
-
-**© 2026 — Equipo 4bytes**
-**Proyecto académico — Ingeniería de Software 1**
+La aplicación busca reducir el registro manual y disperso de información, mejorar el control del proceso de acopio y facilitar la consulta de los datos por parte del personal encargado.
