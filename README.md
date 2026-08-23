@@ -57,7 +57,7 @@ La entidad **Productor** estará relacionada posteriormente con las entregas y r
 
 ## Capacidad nativa prevista
 
-###  Ubicación
+### Ubicación
 
 La aplicación utilizará la ubicación del dispositivo para registrar o consultar la ubicación de los puntos de recolección y apoyar el seguimiento de las rutas.
 
@@ -65,12 +65,12 @@ Esta capacidad permitirá relacionar una recolección con su ubicación y facili
 
 ## Equipo 4bytes
 
-| Integrante                    | Código        | Rol semana 1       |
-| ----------------------------- | ------------- | ------------------ |
-| LINCOL WERNER YUJRA CALLA     | 202411737 | Coordinación       |
+| Integrante                    | Código    | Rol semana 1           |
+| ----------------------------- | --------- | ---------------------- |
+| LINCOL WERNER YUJRA CALLA     | 202411737 | Coordinación           |
 | GUIDO DANIEL MAYTA SUAÑA      | 202413212 | QA y documentación     |
-| RONALD CONDORI OLAZABAL       | 202410814 | Logica y datos               |
-| DILWER JHONATAN AGUILAR PAJA | 202414021 | UI  |
+| RONALD CONDORI OLAZABAL       | 202410814 | Lógica y datos         |
+| DILWER JHONATAN AGUILAR PAJA  | 202414021 | UI                     |
 
 ## Tecnologías
 
@@ -90,3 +90,31 @@ La aplicación será desarrollada utilizando Kotlin Multiplatform y Compose Mult
 * Desktop
 
 > iOS preparado: requiere macOS para compilar.
+
+---
+
+## Estructura del proyecto
+
+* [/androidApp](./androidApp) — entrada de la app Android
+* [/shared/src/commonMain](./shared/src/commonMain/kotlin) — código compartido entre plataformas
+* [/shared/src/androidMain](./shared/src/androidMain/kotlin) — código específico Android
+* [/shared/src/iosMain](./shared/src/iosMain/kotlin) — código específico iOS
+* [/shared/src/jvmMain](./shared/src/jvmMain/kotlin) — código JVM / Desktop (incluye Playground)
+
+## Comandos útiles
+
+```bash
+# Compilar app Android
+./gradlew :androidApp:assembleDebug
+
+# Correr Playground (JVM)
+./gradlew :shared:jvmRun
+
+# Tests
+./gradlew :shared:testAndroidHostTest
+./gradlew :shared:iosSimulatorArm64Test
+```
+
+---
+
+Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)
