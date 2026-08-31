@@ -1,5 +1,4 @@
 package com.example.acopiodeleche
-
 import com.example.acopiodeleche.domain.model.Categoria
 import com.example.acopiodeleche.domain.model.RegistroLeche
 
@@ -174,3 +173,4 @@ fun main() {
     val (identificador, nombreProv, litrosProv) = registro1
     println("$identificador | $nombreProv | $litrosProv L")
 }
+

@@ -53,3 +53,5 @@ class RegistroLecheTest {
         assertEquals(original.proveedor, actualizado.proveedor)
     }
 }
+
+
