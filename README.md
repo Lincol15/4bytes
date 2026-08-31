@@ -68,7 +68,7 @@ Entre los principales problemas se encuentran:
 
 ---
 
-#  Usuarios del sistema
+# Usuarios del sistema
 
 El sistema contempla diferentes tipos de usuarios de acuerdo con las responsabilidades dentro del proceso.
 
