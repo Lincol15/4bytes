@@ -4,7 +4,7 @@
 
 ---
 
-##  Descripción del proyecto
+## Descripción del proyecto
 
 **4bytes** es un sistema de gestión para centros o plantas de acopio de leche que busca reemplazar el registro manual realizado durante las actividades de recolección y recepción.
 
