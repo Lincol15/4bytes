@@ -41,7 +41,11 @@ fun AcopioScreen(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(
-                text = "${registros.size} registros · ${String.format("%.1f", registros.sumOf { it.litros })} L en total",
+                text = "${registros.size} registros · ${registros.sumOf { it.litros }.let { 
+                    val entero = it.toLong()
+                    val decimal = ((it - entero) * 10).toLong()
+                    "$entero.${decimal} L"
+                }} en total",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
