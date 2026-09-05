@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,12 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.acopiodeleche.domain.model.DatosMock
-import com.example.acopiodeleche.domain.model.RegistroAcopio
 
 @Composable
-fun AcopioScreen(modifier: Modifier = Modifier) {
-
-    // Estado elevado aquí
+fun AcopioScreen(
+    onVolver: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     var registros by remember { mutableStateOf(DatosMock.registrosAcopio.toList()) }
     var mostrarFormulario by remember { mutableStateOf(false) }
 
@@ -36,34 +37,35 @@ fun AcopioScreen(modifier: Modifier = Modifier) {
 
         // Encabezado
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            if (onVolver != null) {
+                TextButton(onClick = onVolver) { Text("← Volver") }
+            }
             Text(
                 text = "Acopio de leche",
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(
-                text = "${registros.size} registros · ${registros.sumOf { it.litros }.let { 
-                    val entero = it.toLong()
-                    val decimal = ((it - entero) * 10).toLong()
-                    "$entero.${decimal} L"
-                }} en total",
+                text = "${registros.size} registros · ${
+                    registros.sumOf { it.litros }.let {
+                        val entero = it.toLong()
+                        val decimal = ((it - entero) * 10).toLong()
+                        "$entero.${decimal} L"
+                    }
+                } en total",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        // Botón registrar
         Button(
             onClick = { mostrarFormulario = true },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-        ) {
-            Text("+ Registrar acopio")
-        }
+        ) { Text("+ Registrar acopio") }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Formulario o historial
         if (mostrarFormulario) {
             FormularioAcopio(
                 alGuardar = { nuevo ->
@@ -93,10 +95,7 @@ fun AcopioScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun EstadoVacioAcopio() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "No hay registros de acopio",

@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,12 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.acopiodeleche.domain.model.DatosMock
-import com.example.acopiodeleche.domain.model.Productor
 
 @Composable
-fun ProductoresScreen(modifier: Modifier = Modifier) {
-
-    // Estado de la lista — vive aquí (estado elevado)
+fun ProductoresScreen(
+    soloLectura: Boolean = false,
+    onVolver: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     var productores by remember { mutableStateOf(DatosMock.productores.toList()) }
     var mostrarFormulario by remember { mutableStateOf(false) }
 
@@ -36,6 +38,9 @@ fun ProductoresScreen(modifier: Modifier = Modifier) {
 
         // Encabezado
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            if (onVolver != null) {
+                TextButton(onClick = onVolver) { Text("← Volver") }
+            }
             Text(
                 text = "Productores",
                 style = MaterialTheme.typography.headlineMedium
@@ -47,14 +52,14 @@ fun ProductoresScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        // Botón registrar
-        Button(
-            onClick = { mostrarFormulario = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            Text("+ Registrar productor")
+        // Botón registrar — solo si no es soloLectura
+        if (!soloLectura) {
+            Button(
+                onClick = { mostrarFormulario = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) { Text("+ Registrar productor") }
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -89,10 +94,7 @@ fun ProductoresScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun EstadoVacioProductores() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "No hay productores registrados",
