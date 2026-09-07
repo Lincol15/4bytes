@@ -194,6 +194,66 @@ object DatosMock {
     )
 
     // ----------------------------------------------------------------
+    // ANÁLISIS DE CALIDAD (compartido entre CalidadHomeScreen y ProductorHomeScreen)
+    // ----------------------------------------------------------------
+    val analisisCalidad = mutableListOf<com.example.acopiodeleche.domain.model.ControlCalidad>()
+
+    // ----------------------------------------------------------------
+    // PRODUCCIÓN
+    // ----------------------------------------------------------------
+    val lotesProduccion = mutableListOf(
+        LoteProduccion(
+            id = "lote-01",
+            codigoLote = "Q-2026-001",
+            producto = TipoProducto.QUESO,
+            litrosUsados = 500.0,
+            cantidadProducida = 50.0,
+            unidadMedida = "kg",
+            fecha = "01/09/2026",
+            idTrabajador = "trabajador-01",
+            observacion = "Queso fresco de primera calidad"
+        ),
+        LoteProduccion(
+            id = "lote-02",
+            codigoLote = "Y-2026-001",
+            producto = TipoProducto.YOGUR,
+            litrosUsados = 200.0,
+            cantidadProducida = 180.0,
+            unidadMedida = "L",
+            fecha = "01/09/2026",
+            idTrabajador = "trabajador-01"
+        )
+    )
+
+    // ----------------------------------------------------------------
+    // VENTAS / SALIDAS
+    // ----------------------------------------------------------------
+    val ventasSalidas = mutableListOf(
+        VentaSalida(
+            id = "venta-01",
+            idLote = "lote-01",
+            producto = TipoProducto.QUESO,
+            cliente = "Distribuidora ABC",
+            cantidad = 20.0,
+            unidadMedida = "kg",
+            precioPorUnidad = 25.0,
+            fecha = "02/09/2026",
+            idTrabajador = "trabajador-01"
+        ),
+        VentaSalida(
+            id = "venta-02",
+            idLote = "lote-02",
+            producto = TipoProducto.YOGUR,
+            cliente = "Tienda El Buen Sabor",
+            cantidad = 50.0,
+            unidadMedida = "L",
+            precioPorUnidad = 8.0,
+            fecha = "02/09/2026",
+            idTrabajador = "trabajador-01"
+        )
+    )
+
+    // ----------------------------------------------------------------
     // NOTIFICACIONES DE PRUEBA
     // ----------------------------------------------------------------
     val notificaciones = mutableListOf(

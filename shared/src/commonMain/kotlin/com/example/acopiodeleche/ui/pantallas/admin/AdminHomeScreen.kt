@@ -66,7 +66,7 @@ fun AdminHomeScreen(
 ) {
     val usuario = SesionActual.usuario
     var tabActual by remember { mutableStateOf(0) }
-    val tabs = listOf("Dashboard", "Usuarios", "Productores", "Config")
+    val tabs = listOf("Inicio", "Usuarios", "Product.", "Avisos", "Config")
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -111,7 +111,8 @@ fun AdminHomeScreen(
             0 -> DashboardAdmin()
             1 -> UsuariosTab()
             2 -> com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen()
-            3 -> ConfiguracionTab()
+            3 -> AvisosTab()
+            4 -> ConfiguracionTab()
         }
     }
 }
@@ -365,6 +366,158 @@ private fun FormularioUsuario(
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                 ) { Text("Guardar") }
             }
+        }
+    }
+}
+
+// ── TAB AVISOS / EVENTOS ─────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AvisosTab() {
+    var avisos by remember { mutableStateOf(DatosMock.notificaciones.toList()) }
+    var mostrarFormulario by remember { mutableStateOf(false) }
+
+    if (mostrarFormulario) {
+        FormularioAviso(
+            alGuardar = { nuevo ->
+                DatosMock.notificaciones.add(nuevo)
+                avisos = DatosMock.notificaciones.toList()
+                mostrarFormulario = false
+            },
+            alCancelar = { mostrarFormulario = false }
+        )
+    } else {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${avisos.size} avisos enviados",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(
+                    onClick = { mostrarFormulario = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+                ) { Text("+ Nuevo aviso") }
+            }
+            HorizontalDivider()
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(avisos) { aviso ->
+                    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                            Text(aviso.tipo.icono, fontSize = 28.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(aviso.titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(aviso.mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${aviso.fecha} ${aviso.hora} · ${aviso.tipo.etiqueta}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FormularioAviso(
+    alGuardar: (com.example.acopiodeleche.domain.model.Notificacion) -> Unit,
+    alCancelar: () -> Unit
+) {
+    var titulo by remember { mutableStateOf("") }
+    var mensaje by remember { mutableStateOf("") }
+    var tipoSeleccionado by remember { mutableStateOf(com.example.acopiodeleche.domain.model.TipoNotificacion.AVISO_GENERAL) }
+    var dropTipoExpanded by remember { mutableStateOf(false) }
+    var fecha by remember { mutableStateOf("") }
+    var hora by remember { mutableStateOf("") }
+
+    val formularioValido = titulo.isNotBlank() && mensaje.isNotBlank() && fecha.isNotBlank() && hora.isNotBlank()
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = alCancelar) { Text("← Volver") }
+                Text("Nuevo aviso / evento", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = titulo, onValueChange = { titulo = it },
+                label = { Text("Título *") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = mensaje, onValueChange = { mensaje = it },
+                label = { Text("Mensaje *") }, minLines = 3, modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            ExposedDropdownMenuBox(expanded = dropTipoExpanded, onExpandedChange = { dropTipoExpanded = it }) {
+                OutlinedTextField(
+                    value = "${tipoSeleccionado.icono} ${tipoSeleccionado.etiqueta}",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Tipo *") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropTipoExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(expanded = dropTipoExpanded, onDismissRequest = { dropTipoExpanded = false }) {
+                    com.example.acopiodeleche.domain.model.TipoNotificacion.entries.forEach { tipo ->
+                        DropdownMenuItem(
+                            text = { Text("${tipo.icono} ${tipo.etiqueta}") },
+                            onClick = { tipoSeleccionado = tipo; dropTipoExpanded = false }
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = fecha, onValueChange = { fecha = it },
+                    label = { Text("Fecha *") }, placeholder = { Text("dd/MM/yyyy") },
+                    singleLine = true, modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = hora, onValueChange = { hora = it },
+                    label = { Text("Hora *") }, placeholder = { Text("HH:mm") },
+                    singleLine = true, modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        item {
+            Button(
+                onClick = {
+                    alGuardar(
+                        com.example.acopiodeleche.domain.model.Notificacion(
+                            id = "n-${kotlin.random.Random.nextInt(1000, 9999)}",
+                            titulo = titulo.trim(),
+                            mensaje = mensaje.trim(),
+                            tipo = tipoSeleccionado,
+                            fecha = fecha.trim(),
+                            hora = hora.trim(),
+                            leida = false
+                        )
+                    )
+                },
+                enabled = formularioValido,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+            ) { Text("Enviar aviso a todos los productores", fontWeight = FontWeight.Bold) }
         }
     }
 }

@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.DatosMock
 import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.SesionActual
+import com.example.acopiodeleche.domain.model.ControlCalidad
+import com.example.acopiodeleche.domain.model.ResultadoCalidad
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulHuata = Color(0xFF1565C0)
@@ -56,10 +58,12 @@ fun ProductorHomeScreen(
     val misEntregas = DatosMock.registrosAcopio.filter { it.idProductor == idProductor }
     val misPagos = DatosMock.pagos.filter { it.idProductor == idProductor }
     val misNotificaciones = DatosMock.notificaciones
+    // análisis de calidad del productor — se comparte con CalidadHomeScreen
+    val misAnalisis = DatosMock.analisisCalidad.filter { it.idProductor == idProductor }
     val noLeidas = misNotificaciones.count { !it.leida }
 
     var tabActual by remember { mutableStateOf(0) }
-    val tabs = listOf("Inicio", "Entregas", "Pagos", "Avisos")
+    val tabs = listOf("Inicio", "Entregas", "Pagos", "Calidad", "Avisos")
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -101,7 +105,7 @@ fun ProductorHomeScreen(
                     selected = tabActual == i,
                     onClick = { tabActual = i },
                     text = {
-                        if (i == 3 && noLeidas > 0) {
+                        if (i == 4 && noLeidas > 0) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(titulo)
                                 Spacer(Modifier.width(4.dp))
@@ -135,7 +139,8 @@ fun ProductorHomeScreen(
             )
             1 -> EntregasProductorTab(entregas = misEntregas)
             2 -> PagosProductorTab(pagos = misPagos)
-            3 -> NotificacionesTab(notificaciones = misNotificaciones)
+            3 -> CalidadProductorTab(analisis = misAnalisis)
+            4 -> NotificacionesTab(notificaciones = misNotificaciones)
         }
     }
 }
@@ -429,6 +434,139 @@ private fun NotificacionesTab(notificaciones: List<com.example.acopiodeleche.dom
                         Text(
                             text = "${notif.fecha} ${notif.hora}",
                             style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalidadProductorTab(analisis: List<ControlCalidad>) {
+    if (analisis.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🔬", fontSize = 48.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "No hay análisis de calidad registrados",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "El personal de calidad registrará los análisis de tu leche",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Text(
+                "Mis análisis de calidad",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "${analisis.size} análisis registrados",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        items(analisis) { cal ->
+            val colorResultado = when (cal.resultado) {
+                ResultadoCalidad.APTO       -> VerdeHuata
+                ResultadoCalidad.NO_APTO    -> Color.Red
+                ResultadoCalidad.OBSERVADO  -> Color(0xFFF9A825)
+                ResultadoCalidad.PENDIENTE  -> Color.Gray
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Código: ${cal.codigoAnalisis}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${cal.fecha} — ${cal.hora}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(colorResultado.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = cal.resultado.etiqueta,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colorResultado
+                            )
+                        }
+                    }
+
+                    if (cal.grasa != null || cal.ph != null || cal.densidad != null) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        // Parámetros en grilla
+                        val params = buildList {
+                            cal.grasa?.let { add("Grasa" to "$it%") }
+                            cal.sng?.let { add("SNG" to "$it%") }
+                            cal.densidad?.let { add("Densidad" to "$it") }
+                            cal.proteina?.let { add("Proteína" to "$it%") }
+                            cal.lactosa?.let { add("Lactosa" to "$it%") }
+                            cal.sales?.let { add("Sales" to "$it%") }
+                            cal.totalSolidos?.let { add("T. Sólidos" to "$it%") }
+                            cal.aguaAnadida?.let { add("Agua añ." to "$it%") }
+                            cal.puntoCongel?.let { add("P. Cong." to "${it}°C") }
+                            cal.ph?.let { add("pH" to "$it") }
+                        }
+                        params.chunked(3).forEach { fila ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                fila.forEach { (label, valor) ->
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = valor,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                        }
+                    }
+
+                    if (!cal.observacion.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Obs: ${cal.observacion}",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

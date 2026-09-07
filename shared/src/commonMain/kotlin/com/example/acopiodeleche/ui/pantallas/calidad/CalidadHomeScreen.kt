@@ -65,7 +65,7 @@ fun CalidadHomeScreen(
     val usuario = SesionActual.usuario
     var tabActual by remember { mutableStateOf(0) }
     val tabs = listOf("Nuevo análisis", "Historial")
-    val analisis = remember { mutableStateOf(mutableListOf<ControlCalidad>()) }
+    val analisis = remember { mutableStateOf(DatosMock.analisisCalidad) }
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -109,7 +109,8 @@ fun CalidadHomeScreen(
         when (tabActual) {
             0 -> FormularioAnalisis(
                 alGuardar = { nuevo ->
-                    analisis.value.add(nuevo)
+                    DatosMock.analisisCalidad.add(nuevo)
+                    analisis.value = DatosMock.analisisCalidad
                     tabActual = 1
                 }
             )

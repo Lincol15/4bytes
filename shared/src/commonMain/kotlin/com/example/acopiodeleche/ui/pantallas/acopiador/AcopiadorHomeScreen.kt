@@ -37,6 +37,7 @@ import com.example.acopiodeleche.domain.model.DatosMock
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.ui.pantallas.acopio.AcopioScreen
 import com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen
+import com.example.acopiodeleche.ui.pantallas.acopiador.MapaAcopiadorScreen
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulHuata = Color(0xFF1565C0)
@@ -48,7 +49,7 @@ fun AcopiadorHomeScreen(
 ) {
     val usuario = SesionActual.usuario
     var pantallaActual by remember { mutableStateOf(0) }
-    // 0=inicio, 1=registrar acopio, 2=productores, 3=historial
+    // 0=inicio, 1=registrar acopio, 2=productores, 3=historial, 4=mapa
 
     when (pantallaActual) {
         1 -> AcopioScreen(
@@ -56,6 +57,9 @@ fun AcopiadorHomeScreen(
         )
         2 -> ProductoresScreen(
             soloLectura = true,
+            onVolver = { pantallaActual = 0 }
+        )
+        4 -> MapaAcopiadorScreen(
             onVolver = { pantallaActual = 0 }
         )
         else -> {
@@ -161,9 +165,9 @@ fun AcopiadorHomeScreen(
                         MenuItemAcopiador(
                             icono = "🗺",
                             titulo = "Mapa / Mi ubicación",
-                            descripcion = "Próximamente disponible",
+                            descripcion = "Ver ruta y puntos de recolección",
                             color = Color(0xFF00838F)
-                        ) { /* fase 3 */ }
+                        ) { pantallaActual = 4 }
                     }
 
                     // Historial reciente

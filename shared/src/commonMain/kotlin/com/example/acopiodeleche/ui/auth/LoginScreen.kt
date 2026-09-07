@@ -10,14 +10,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,80 +41,57 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.DatosMock
-import com.example.acopiodeleche.domain.model.Rol
 import com.example.acopiodeleche.domain.model.Usuario
 import com.example.acopiodeleche.domain.service.AuthService
 
-// Colores de marca Ecolácteos Huata
-private val VerdeHuata = Color(0xFF2E7D32)
-private val AzulHuata = Color(0xFF1565C0)
+private val VerdeHuata   = Color(0xFF2E7D32)
+private val AzulHuata    = Color(0xFF1565C0)
 private val AmarilloHuata = Color(0xFFF9A825)
-private val VerdeClaro = Color(0xFF66BB6A)
 
 @Composable
 fun LoginScreen(
     onLoginExitoso: (Usuario) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val authService = remember {
-        AuthService(DatosMock.usuarios).also { svc ->
-            // Los usuarios ya están en DatosMock, no hace falta registrar
-        }
-    }
+    val authService = remember { AuthService(DatosMock.usuarios) }
 
-    var correo by remember { mutableStateOf("") }
-    var contrasena by remember { mutableStateOf("") }
+    var correo            by remember { mutableStateOf("") }
+    var contrasena        by remember { mutableStateOf("") }
     var mostrarContrasena by remember { mutableStateOf(false) }
-    var errorMensaje by remember { mutableStateOf("") }
-    var cargando by remember { mutableStateOf(false) }
+    var errorMensaje      by remember { mutableStateOf("") }
+    var cargando          by remember { mutableStateOf(false) }
 
-    val correoVacio = correo.isBlank()
-    val contrasenaVacia = contrasena.isBlank()
-    val formularioValido = !correoVacio && !contrasenaVacia
+    val formularioValido = correo.isNotBlank() && contrasena.isNotBlank()
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(VerdeHuata, AzulHuata)
-                )
-            ),
-        contentAlignment = Alignment.Center
+            .background(Brush.verticalGradient(listOf(VerdeHuata, AzulHuata)))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ── Logo / Encabezado ──────────────────────────────────
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Ícono de vaca (placeholder — luego agregas imagen real)
+            // Logo
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .background(Color.White, shape = RoundedCornerShape(40.dp)),
+                    .size(88.dp)
+                    .background(Color.White, RoundedCornerShape(44.dp)),
                 contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "🐄",
-                    fontSize = 40.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
+            ) { Text("🐄", fontSize = 44.sp) }
 
             Text(
                 text = "ECOLÁCTEOS HUATA",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
-
             Text(
                 text = "Disfrute lo Natural",
                 style = MaterialTheme.typography.bodyMedium,
@@ -121,13 +99,13 @@ fun LoginScreen(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // ── Tarjeta de login ───────────────────────────────────
+            // Tarjeta de login
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                elevation = CardDefaults.cardElevation(8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(
@@ -143,86 +121,62 @@ fun LoginScreen(
                         color = VerdeHuata
                     )
 
-                    // Campo correo
                     OutlinedTextField(
                         value = correo,
-                        onValueChange = {
-                            correo = it
-                            errorMensaje = ""
-                        },
+                        onValueChange = { correo = it; errorMensaje = "" },
                         label = { Text("Correo electrónico") },
-                        placeholder = { Text("usuario@ecolacteos.com") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         isError = errorMensaje.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = VerdeHuata,
-                            focusedLabelColor = VerdeHuata
+                            focusedLabelColor  = VerdeHuata
                         )
                     )
 
-                    // Campo contraseña
                     OutlinedTextField(
                         value = contrasena,
-                        onValueChange = {
-                            contrasena = it
-                            errorMensaje = ""
-                        },
+                        onValueChange = { contrasena = it; errorMensaje = "" },
                         label = { Text("Contraseña") },
                         singleLine = true,
                         visualTransformation = if (mostrarContrasena)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
+                            VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
                             IconButton(onClick = { mostrarContrasena = !mostrarContrasena }) {
-                                Text(
-                                    text = if (mostrarContrasena) "👁" else "🔒",
-                                    fontSize = 18.sp
-                                )
+                                Text(if (mostrarContrasena) "👁" else "🔒", fontSize = 18.sp)
                             }
                         },
                         isError = errorMensaje.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = VerdeHuata,
-                            focusedLabelColor = VerdeHuata
+                            focusedLabelColor  = VerdeHuata
                         )
                     )
 
-                    // Error
                     if (errorMensaje.isNotEmpty()) {
                         Text(
                             text = errorMensaje,
                             color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.fillMaxWidth()
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
 
-                    // Botón login
                     Button(
                         onClick = {
                             cargando = true
                             errorMensaje = ""
                             val usuario = authService.login(correo.trim(), contrasena)
                             cargando = false
-                            if (usuario != null) {
-                                onLoginExitoso(usuario)
-                            } else {
-                                errorMensaje = "Correo o contraseña incorrectos. Verifica tus datos."
-                            }
+                            if (usuario != null) onLoginExitoso(usuario)
+                            else errorMensaje = "Correo o contraseña incorrectos."
                         },
                         enabled = formularioValido && !cargando,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = VerdeHuata
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
                     ) {
                         if (cargando) {
                             CircularProgressIndicator(
@@ -231,51 +185,20 @@ fun LoginScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text(
-                                text = "Ingresar",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text("Ingresar", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Hint para pruebas
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.15f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = "Cuentas de prueba:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AmarilloHuata,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    CuentaPrueba("admin@ecolacteos.com", "admin123", "Administrador")
-                    CuentaPrueba("carlos@ecolacteos.com", "acopio123", "Acopiador")
-                    CuentaPrueba("pedro@productor.com", "pedro123", "Productor")
-                    CuentaPrueba("calidad@ecolacteos.com", "calidad123", "Calidad")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                text = "Sistema de Gestión · Ecolácteos Huata",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
         }
     }
-}
-
-@Composable
-private fun CuentaPrueba(correo: String, pass: String, rol: String) {
-    Text(
-        text = "• $rol: $correo / $pass",
-        style = MaterialTheme.typography.bodySmall,
-        color = Color.White.copy(alpha = 0.85f)
-    )
 }
