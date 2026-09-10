@@ -41,6 +41,7 @@ import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
+import com.example.acopiodeleche.ui.pantallas.productor.QuejasProductorScreen
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulHuata = Color(0xFF1565C0)
@@ -63,7 +64,7 @@ fun ProductorHomeScreen(
     val noLeidas = misNotificaciones.count { !it.leida }
 
     var tabActual by remember { mutableStateOf(0) }
-    val tabs = listOf("Inicio", "Entregas", "Pagos", "Calidad", "Avisos")
+    val tabs = listOf("Inicio", "Entregas", "Pagos", "Calidad", "Quejas", "Avisos")
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -105,7 +106,7 @@ fun ProductorHomeScreen(
                     selected = tabActual == i,
                     onClick = { tabActual = i },
                     text = {
-                        if (i == 4 && noLeidas > 0) {
+                        if (i == 5 && noLeidas > 0) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(titulo)
                                 Spacer(Modifier.width(4.dp))
@@ -140,7 +141,8 @@ fun ProductorHomeScreen(
             1 -> EntregasProductorTab(entregas = misEntregas)
             2 -> PagosProductorTab(pagos = misPagos)
             3 -> CalidadProductorTab(analisis = misAnalisis)
-            4 -> NotificacionesTab(notificaciones = misNotificaciones)
+            4 -> QuejasProductorScreen()
+            5 -> NotificacionesTab(notificaciones = misNotificaciones)
         }
     }
 }

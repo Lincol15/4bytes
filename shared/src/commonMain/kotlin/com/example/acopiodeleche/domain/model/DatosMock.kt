@@ -199,6 +199,26 @@ object DatosMock {
     val analisisCalidad = mutableListOf<com.example.acopiodeleche.domain.model.ControlCalidad>()
 
     // ----------------------------------------------------------------
+    // QUEJAS DE PRODUCTORES
+    // ----------------------------------------------------------------
+    val quejas = mutableListOf(
+        Queja(
+            id = "q-01",
+            idProductor = "p-01",
+            titulo = "Precio no actualizado",
+            descripcion = "El precio por litro que me aparece en la app no coincide con lo que me pagaron esta semana.",
+            fecha = "02/09/2026",
+            hora = "10:30",
+            estado = EstadoQueja.PENDIENTE
+        )
+    )
+
+    // ----------------------------------------------------------------
+    // SANCIONES
+    // ----------------------------------------------------------------
+    val sanciones = mutableListOf<Sancion>()
+
+    // ----------------------------------------------------------------
     // PRODUCCIÓN
     // ----------------------------------------------------------------
     val lotesProduccion = mutableListOf(

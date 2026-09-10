@@ -66,7 +66,7 @@ fun AdminHomeScreen(
 ) {
     val usuario = SesionActual.usuario
     var tabActual by remember { mutableStateOf(0) }
-    val tabs = listOf("Inicio", "Usuarios", "Product.", "Avisos", "Config")
+    val tabs = listOf("Inicio", "Usuarios", "Product.", "Pagos", "Calidad", "Quejas", "Avisos", "Config")
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -111,8 +111,11 @@ fun AdminHomeScreen(
             0 -> DashboardAdmin()
             1 -> UsuariosTab()
             2 -> com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen()
-            3 -> AvisosTab()
-            4 -> ConfiguracionTab()
+            3 -> com.example.acopiodeleche.ui.pantallas.pagos.PagosAdminScreen(onVolver = { tabActual = 0 })
+            4 -> com.example.acopiodeleche.ui.pantallas.admin.CalidadAdminScreen(onVolver = { tabActual = 0 })
+            5 -> QuejasAdminTab()
+            6 -> AvisosTab()
+            7 -> ConfiguracionTab()
         }
     }
 }
@@ -365,6 +368,131 @@ private fun FormularioUsuario(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                 ) { Text("Guardar") }
+            }
+        }
+    }
+}
+
+// ── TAB QUEJAS DEL PRODUCTOR ──────────────────────────────────────────────
+@Composable
+private fun QuejasAdminTab() {
+    var quejas by remember { mutableStateOf(DatosMock.quejas.toList()) }
+    val pendientes = quejas.count {
+        it.estado == com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE
+    }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Quejas y reclamos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "$pendientes pendientes de respuesta",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (pendientes > 0) Color(0xFFE65100) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        HorizontalDivider()
+
+        if (quejas.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No hay quejas registradas", style = MaterialTheme.typography.bodyLarge)
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(quejas) { queja: com.example.acopiodeleche.domain.model.Queja ->
+                    val productor = DatosMock.productores.find { it.idProductor == queja.idProductor }
+                    var respuestaTexto by remember { mutableStateOf(queja.respuesta ?: "") }
+                    var respondiendo by remember { mutableStateOf(false) }
+
+                    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(queja.titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "${productor?.nombreCompleto ?: "Productor"} · ${queja.fecha}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            when (queja.estado) {
+                                                com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE -> Color(0xFFE65100).copy(alpha = 0.15f)
+                                                com.example.acopiodeleche.domain.model.EstadoQueja.RESPONDIDA -> VerdeHuata.copy(alpha = 0.15f)
+                                                else -> Color.Gray.copy(alpha = 0.15f)
+                                            },
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        "${queja.estado.icono} ${queja.estado.etiqueta}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(queja.descripcion, style = MaterialTheme.typography.bodySmall)
+
+                            if (!queja.respuesta.isNullOrBlank() && !respondiendo) {
+                                Spacer(Modifier.height(6.dp))
+                                Text("Tu respuesta: ${queja.respuesta}", style = MaterialTheme.typography.bodySmall, color = VerdeHuata)
+                            }
+
+                            if (respondiendo) {
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = respuestaTexto,
+                                    onValueChange = { respuestaTexto = it },
+                                    label = { Text("Respuesta al productor") },
+                                    minLines = 2,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { respondiendo = false }) { Text("Cancelar") }
+                                    Button(
+                                        onClick = {
+                                            val idx = DatosMock.quejas.indexOfFirst { it.id == queja.id }
+                                            if (idx != -1) {
+                                                DatosMock.quejas[idx] = queja.copy(
+                                                    respuesta = respuestaTexto,
+                                                    estado = com.example.acopiodeleche.domain.model.EstadoQueja.RESPONDIDA,
+                                                    fechaRespuesta = "Hoy"
+                                                )
+                                                quejas = DatosMock.quejas.toList()
+                                            }
+                                            respondiendo = false
+                                        },
+                                        enabled = respuestaTexto.isNotBlank(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
+                                    ) { Text("Enviar respuesta") }
+                                }
+                            } else if (queja.estado == com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE) {
+                                Spacer(Modifier.height(4.dp))
+                                Button(
+                                    onClick = { respondiendo = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+                                ) { Text("Responder queja") }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
