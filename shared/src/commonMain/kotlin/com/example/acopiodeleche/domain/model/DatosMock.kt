@@ -43,7 +43,35 @@ object DatosMock {
             correo = "carlos@ecolacteos.com",
             contrasena = "acopio123",
             rol = Rol.ACOPIADOR,
-            estado = true
+            estado = true,
+            comunidad = "Comunidad A",
+            vehiculo = "Motocarga 01"
+        ),
+        Usuario(
+            id = "u-acopiador-02",
+            nombres = "Luis",
+            apellidos = "Quispe Chura",
+            dni = "22222223",
+            telefono = "977777776",
+            correo = "luis@ecolacteos.com",
+            contrasena = "acopio123",
+            rol = Rol.ACOPIADOR,
+            estado = true,
+            comunidad = "Comunidad B",
+            vehiculo = "Motocarga 02"
+        ),
+        Usuario(
+            id = "u-acopiador-03",
+            nombres = "Roberto",
+            apellidos = "Apaza Ticona",
+            dni = "22222224",
+            telefono = "977777775",
+            correo = "roberto@ecolacteos.com",
+            contrasena = "acopio123",
+            rol = Rol.ACOPIADOR,
+            estado = true,
+            comunidad = "Comunidad C",
+            vehiculo = "Furgón 01"
         ),
         Usuario(
             id = "u-productor-01",
@@ -85,12 +113,52 @@ object DatosMock {
             estado = true
         ),
         Productor(
+            idProductor = "p-05",
+            nombres = "Jorge",
+            apellidos = "Calla Puma",
+            dni = "72456780",
+            telefono = "987654320",
+            direccion = "Jr. Los Pinos 45",
+            comunidad = "Comunidad A",
+            estado = true
+        ),
+        Productor(
+            idProductor = "p-06",
+            nombres = "Elena",
+            apellidos = "Apaza Mamani",
+            dni = "72456781",
+            telefono = "987654319",
+            direccion = "Av. Las Flores 78",
+            comunidad = "Comunidad A",
+            estado = true
+        ),
+        Productor(
             idProductor = "p-02",
             nombres = "María",
             apellidos = "Condori Flores",
             dni = "65432198",
             telefono = "976543210",
             direccion = "Av. Principal 456",
+            comunidad = "Comunidad B",
+            estado = true
+        ),
+        Productor(
+            idProductor = "p-07",
+            nombres = "Feliciano",
+            apellidos = "Ticona Ramos",
+            dni = "65432190",
+            telefono = "976543200",
+            direccion = "Calle Huata 12",
+            comunidad = "Comunidad B",
+            estado = true
+        ),
+        Productor(
+            idProductor = "p-08",
+            nombres = "Juana",
+            apellidos = "Mamani Coila",
+            dni = "65432191",
+            telefono = "976543201",
+            direccion = "Pasaje Central 3",
             comunidad = "Comunidad B",
             estado = true
         ),
@@ -113,7 +181,37 @@ object DatosMock {
             direccion = "Pasaje Los Pinos 12",
             comunidad = "Comunidad C",
             estado = true
+        ),
+        Productor(
+            idProductor = "p-09",
+            nombres = "Dionisio",
+            apellidos = "Quispe Larico",
+            dni = "43219870",
+            telefono = "954321090",
+            direccion = "Jr. Huata 56",
+            comunidad = "Comunidad C",
+            estado = true
+        ),
+        Productor(
+            idProductor = "p-10",
+            nombres = "Natividad",
+            apellidos = "Flores Condori",
+            dni = "43219871",
+            telefono = "954321091",
+            direccion = "Av. Titicaca 99",
+            comunidad = "Comunidad C",
+            estado = true
         )
+    )
+
+    // ----------------------------------------------------------------
+    // ASIGNACIONES: qué acopiador cubre qué productores
+    // El admin puede modificar esto desde su panel de configuración
+    // ----------------------------------------------------------------
+    val asignaciones = mutableListOf(
+        AsignacionAcopiador("u-acopiador-01", listOf("p-01", "p-05", "p-06")),
+        AsignacionAcopiador("u-acopiador-02", listOf("p-02", "p-07", "p-08")),
+        AsignacionAcopiador("u-acopiador-03", listOf("p-04", "p-09", "p-10"))
     )
 
     // ----------------------------------------------------------------

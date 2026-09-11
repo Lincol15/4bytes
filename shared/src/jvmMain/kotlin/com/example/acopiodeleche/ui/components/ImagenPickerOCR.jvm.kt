@@ -1,11 +1,13 @@
-package com.example.acopiodeleche.ui.pantallas.acopiador
+package com.example.acopiodeleche.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,36 +19,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-actual fun MapaWebView(
-    puntos: List<PuntoRuta>,
-    rutaActiva: RutaAcopio?,
+actual fun ImagenPickerConOCR(
+    onDatos: (DatosOCR) -> Unit,
+    onCancelar: () -> Unit,
     modifier: Modifier
 ) {
-    val cantPuntos = (rutaActiva?.puntos ?: puntos).size
-    val nombreRuta = rutaActiva?.nombre ?: "Ruta de acopio"
-
     Box(
-        modifier = modifier.background(Color(0xFFE3F2FD)),
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color(0xFF0277BD).copy(0.07f), RoundedCornerShape(12.dp))
+            .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🗺️", fontSize = 48.sp)
-            Spacer(Modifier.height(8.dp))
+            Text("📷", fontSize = 32.sp)
+            Spacer(Modifier.height(6.dp))
             Text(
-                nombreRuta,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                "OCR disponible en Android",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0277BD)
             )
             Text(
-                "$cantPuntos puntos en la ruta",
+                "Usa la app móvil para escanear el ticket LACTOMAT",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Disponible en Android",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF1565C0)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

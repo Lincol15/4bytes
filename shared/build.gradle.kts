@@ -51,6 +51,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.sqldelight.android)
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.mlkit.textrecognition)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

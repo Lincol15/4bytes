@@ -51,6 +51,7 @@ import com.example.acopiodeleche.domain.model.LoteProduccion
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoProducto
 import com.example.acopiodeleche.domain.model.VentaSalida
+import com.example.acopiodeleche.ui.components.CampoFecha
 import kotlin.random.Random
 
 private val AzulPlanta = Color(0xFF37474F)
@@ -345,22 +346,25 @@ private fun FormularioLote(alGuardar: (LoteProduccion) -> Unit, alCancelar: () -
             }
         }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = fecha,
+            // Dos campos de fecha con picker automático
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CampoFecha(
+                    value         = fecha,
                     onValueChange = { fecha = it },
-                    label = { Text("Fecha producción *") },
-                    placeholder = { Text("dd/MM/yyyy") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    label         = "Fecha producción",
+                    colorPrimario = NaranjaProduccion,
+                    modifier      = Modifier.weight(1f)
                 )
-                OutlinedTextField(
-                    value = fechaVencimiento,
+                CampoFecha(
+                    value         = fechaVencimiento,
                     onValueChange = { fechaVencimiento = it },
-                    label = { Text("Fecha vencimiento") },
-                    placeholder = { Text("dd/MM/yyyy") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    label         = "Fecha vencimiento",
+                    obligatorio   = false,
+                    colorPrimario = NaranjaProduccion,
+                    modifier      = Modifier.weight(1f)
                 )
             }
         }
@@ -596,11 +600,12 @@ private fun FormularioVenta(alGuardar: (VentaSalida) -> Unit, alCancelar: () -> 
             }
         }
         item {
-            OutlinedTextField(
-                value = fecha, onValueChange = { fecha = it },
-                label = { Text("Fecha de salida *") },
-                placeholder = { Text("dd/MM/yyyy") },
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+            CampoFecha(
+                value = fecha,
+                onValueChange = { fecha = it },
+                label = "Fecha de salida",
+                colorPrimario = VerdeHuata,
+                modifier = Modifier.fillMaxWidth()
             )
         }
         item {

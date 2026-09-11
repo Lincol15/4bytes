@@ -16,7 +16,9 @@ data class Usuario(
     val contrasena: String,         // en producción se almacenará hasheada
     val rol: Rol,
     val estado: Boolean = true,     // true = activo, false = desactivado
-    val idProductor: String? = null // referencia a Productor si rol == PRODUCTOR
+    val idProductor: String? = null,// referencia a Productor si rol == PRODUCTOR
+    val comunidad: String? = null,  // comunidad asignada si rol == ACOPIADOR
+    val vehiculo: String? = null    // vehículo asignado si rol == ACOPIADOR
 ) {
     val nombreCompleto: String
         get() = "$nombres $apellidos"
