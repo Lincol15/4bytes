@@ -76,8 +76,11 @@ fun FormularioAcopio(
     // ── Estado del formulario ────────────────────────────────────────────
     var busqueda                by remember { mutableStateOf("") }
     var productorSeleccionado   by remember { mutableStateOf<Productor?>(null) }
+    var zonaSeleccionada        by remember { mutableStateOf<String?>(null) }
     var litrosTexto             by remember { mutableStateOf("") }
     var observacion             by remember { mutableStateOf("") }
+
+    val zonas = listOf("Comunidad A", "Comunidad B", "Comunidad C")
 
     // Filtro de búsqueda
     val productoresFiltrados = remember(busqueda, productoresAsignados) {
@@ -93,6 +96,7 @@ fun FormularioAcopio(
     val litrosInvalido = litrosTexto.isNotBlank() && (litros == null || litros <= 0)
     val formularioValido = productorSeleccionado != null
             && litros != null && litros > 0
+            && zonaSeleccionada != null
 
     Column(
         modifier = modifier
@@ -228,6 +232,46 @@ fun FormularioAcopio(
 
         HorizontalDivider()
 
+        // ── Zona ─────────────────────────────────────────────────────────
+        Text(
+            "Seleccionar zona",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            zonas.forEach { zona ->
+                val seleccionada = zonaSeleccionada == zona
+                val colorZona = when (zona) {
+                    "Zona A" -> Color(0xFF1565C0)
+                    "Zona B" -> Color(0xFF2E7D32)
+                    else     -> Color(0xFF6A1B9A)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            if (seleccionada) colorZona else colorZona.copy(alpha = 0.08f),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .clickable { zonaSeleccionada = zona }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        zona,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (seleccionada) Color.White else colorZona
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider()
+
         // ── Litros ───────────────────────────────────────────────────────
         OutlinedTextField(
             value = litrosTexto,
@@ -272,7 +316,7 @@ fun FormularioAcopio(
                             idProductor = productorSeleccionado!!.idProductor,
                             acopiador   = nombreAcopiador,
                             vehiculo    = vehiculoAcopiador,
-                            zona        = productorSeleccionado!!.comunidad,
+                            zona        = zonaSeleccionada ?: productorSeleccionado!!.comunidad,
                             fecha       = ahora,
                             hora        = horaAhora,
                             litros      = litros ?: 0.0,

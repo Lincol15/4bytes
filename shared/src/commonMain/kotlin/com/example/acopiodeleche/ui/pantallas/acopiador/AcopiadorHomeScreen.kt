@@ -50,13 +50,12 @@ fun AcopiadorHomeScreen(
 ) {
     val usuario = SesionActual.usuario
     var pantallaActual by remember { mutableStateOf(0) }
-    // 0=inicio, 1=registrar, 2=mis productores, 3=historial jornada, 4=mapa
+    // 0=inicio, 1=registrar, 2=mis productores, 3=historial jornada
 
     when (pantallaActual) {
         1 -> AcopioScreen(onVolver = { pantallaActual = 0 })
         2 -> MisProductoresScreen(onVolver = { pantallaActual = 0 })
         3 -> HistorialJornadaScreen(onVolver = { pantallaActual = 0 })
-        4 -> MapaAcopiadorScreen(onVolver = { pantallaActual = 0 })
         else -> {
             // Registros SOLO de este acopiador
             val misRegistros = DatosMock.registrosAcopio.filter { r ->
@@ -158,15 +157,6 @@ fun AcopiadorHomeScreen(
                             color       = Color(0xFF6A1B9A)
                         ) { pantallaActual = 3 }
                     }
-                    item {
-                        MenuItemAcopiador(
-                            icono       = "🗺️",
-                            titulo      = "Mapa de ruta",
-                            descripcion = "Ver ruta y puntos de recolección",
-                            color       = Color(0xFF00838F)
-                        ) { pantallaActual = 4 }
-                    }
-
                     // ── Últimas 3 entregas ───────────────────────────────
                     item {
                         Spacer(Modifier.height(4.dp))

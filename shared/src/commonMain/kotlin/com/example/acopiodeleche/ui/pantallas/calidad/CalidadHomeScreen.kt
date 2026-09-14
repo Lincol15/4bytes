@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -187,8 +188,8 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
         item {
             HorizontalDivider()
             Spacer(Modifier.height(4.dp))
-            Text("📷 Escanear ticket LACTOMAT", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text("Toma foto o sube imagen del ticket — los valores se llenan automáticamente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("📋 Subir ticket LACTOMAT", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("Sube la foto del ticket — los valores se llenan automáticamente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // Resultado OCR
@@ -202,8 +203,14 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
                             Text("Ticket leído correctamente", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AzulCalidad)
                             Text("Valores auto-rellenados. Verifica y corrige si es necesario.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (textoOCR.isNotBlank()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text("OCR: ${textoOCR.take(80)}…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.height(6.dp))
+                                // DEBUG: texto OCR completo para diagnosticar el parser
+                                Text(
+                                    "── Texto OCR raw ──\n$textoOCR",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
                         }
                         TextButton(onClick = { imagenUri = ""; ocrListo = false; origenDatos = OrigenDatos.MANUAL }) {
@@ -222,7 +229,7 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = AzulCalidad)
                 ) {
-                    Text(if (!ocrListo) "📷 Escanear / Subir ticket" else "📷 Volver a escanear", fontWeight = FontWeight.Bold)
+                    Text(if (!ocrListo) "🖼️ Subir ticket" else "🖼️ Volver a subir ticket", fontWeight = FontWeight.Bold)
                 }
             } else {
                 ImagenPickerConOCR(
