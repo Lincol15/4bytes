@@ -189,166 +189,224 @@ actual fun ImagenPickerConOCR(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PARSER LACTOMAT v5 — asignación por ventana exclusiva
+// PARSER LACTOMAT v7 — regex sobre texto completo + fallback por bloques
 //
-// OCR real observado (línea por línea):
-//   0: Analizador de LACTOMAT
-//   1: SN 49731 Mode 1
-//   2: Temp. 14.8
-//   3: Grasa.
-//   4: SNG
-//   5: Proteína.
-//   6: 16.3          ← Grasa
-//   7: Densidad ,.18.2
-//   8: Lactosa.
-//   9: .718X         ← SNG: 7.18 (OCR lo leyó con punto inicial y X)
-//  10: 2.7           ← Proteína
-//  11: 3:9           ← Lactosa: 3.9 (OCR usó ":" en vez de ".")
-//  12: Sales
-//  13: Total sol idos 23.4
-//  14: Agua anadida 3.5
-//  15: 0.4           ← Sales
-//  16: Punto cong -0.501
-//  17: ph
-//  18: 08:40 01/09/26
-//  19: 11.5          ← pH
+// Estrategia robusta en 3 capas:
 //
-// Regla: cada campo toma el PRIMER número válido entre su línea (inclusive)
-// y la línea donde empieza el SIGUIENTE campo (exclusive).
-// Así "Grasa" solo mira líneas 3-6, no puede contaminar a Densidad.
+//  CAPA 1 — Regex inline: busca "Etiqueta <ruido> VALOR" en una sola línea
+//           Ej: "Grasa.........16.3%"  → captura "16.3"
+//               "Densidad ,.18.2"      → captura "18.2"
+//               "Punto cong.....-0.501 C" → captura "-0.501"
+//
+//  CAPA 2 — Valor en línea siguiente: si la etiqueta está sola en su línea,
+//           el valor puede estar en la próxima línea no vacía.
+//           Ej:  "Grasa."   ← etiqueta sola
+//                "16.3"     ← valor en siguiente línea
+//
+//  CAPA 3 — Regex tolerante: busca el número más cercano a la etiqueta
+//           en una ventana de ±3 líneas, ignorando fechas, SN, Temp.
+//
+// Maneja artefactos OCR conocidos:
+//   "......" → ignorados (puntos de relleno del ticket)
+//   "3:9"   → "3.9"  (OCR confunde punto con dos puntos)
+//   ",."    → "0."   (densidad ",.18.2" → "0.18" → se trata con regex especial)
+//   ".718X" → "7.18" (OCR pierde primer dígito)
+//   "%" "°" "C" → eliminados
 // ─────────────────────────────────────────────────────────────────────────────
 
 private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
 
-    val lineasRaw = texto.lines().map { it.trim() }.filter { it.isNotBlank() }
+    // ── Preprocesar texto completo ────────────────────────────────────────
+    // Normalizar para que regex sea más confiable
+    val textoPrep = texto
+        .replace(Regex("\\.{2,}"), " ")           // puntos relleno → espacio
+        .replace(Regex("[%°]"), " ")               // quitar % y °
+        .replace(Regex("\\s*[Cc]\\s*(?=\\s|\$)"), " ") // " C" unidad → espacio
+        .replace(Regex(",\\."), "0.")              // ",." → "0."
+        .replace(Regex("(\\d+):(?=[0-9])"), "$1.") // "3:9" → "3.9" (solo cuando hay dígito después)
 
-    // ── Normalizar artefactos OCR conocidos ───────────────────────────────
-    fun norm(s: String): String = s
-        .replace(Regex("\\.{2,}"), " ")          // "......" → espacio
-        .replace(Regex("(\\d+):(\\d+)"), "$1.$2") // "3:9" → "3.9"
-        .replace(Regex(",\\."), "0.")             // ",." → "0."
-        .replace(Regex("[%°]"), "")
-        .replace(Regex("\\s*[Cc]\\s*$"), "")     // " C" al final
-        .trim()
+    val lineas = textoPrep.lines().map { it.trim() }.filter { it.isNotBlank() }
 
-    val lineas = lineasRaw.map { norm(it) }.filter { it.isNotBlank() }
-
-    // ── Extraer número de una cadena (decimal preferido, entero como fallback) ──
-    // ".718X" → strip non-numeric prefix/suffix → "7.18" con heurística de punto inicial
-    fun extraerNum(s: String): String {
-        // Caso especial: ".NNNx" → el OCR leyó un decimal sin el dígito inicial
-        // Ejemplo: ".718X" corresponde a "7.18" — recomponemos como "N.NN" si hay 3 decimales
-        val puntoInicial = Regex("""^\s*\.(\d{2,3})[Xx]?\s*$""").find(s)
-        if (puntoInicial != null) {
-            val decimales = puntoInicial.groupValues[1]
-            // "718" → primer dígito es parte entera: "7.18"
-            return "${decimales[0]}.${decimales.substring(1)}"
-        }
-        // Decimal normal (incluyendo negativos)
-        Regex("""-?\d+\.\d+""").find(s)?.let { return it.value }
-        // Entero corto (evitar serie SN:49731 y año 26 de fecha)
-        Regex("""-?\d+""").findAll(s).toList()
-            .filter { m -> m.value.length <= 4 && (m.value.startsWith("-") || m.value.toIntOrNull()?.let { it < 1000 } == true) }
-            .lastOrNull()?.let { return it.value }
-        return ""
-    }
-
-    // ── Detectar si una línea es una "clave" del ticket ───────────────────
-    val CLAVES = listOf("grasa","sng","densidad","proteina","proteína",
-                        "lactosa","sales","total","agua","punto","ph")
-    fun esClave(s: String) = CLAVES.any { s.lowercase().contains(it) }
-
-    // ── Detectar ruido a ignorar ──────────────────────────────────────────
+    // ── Función para detectar ruido ───────────────────────────────────────
     fun esRuido(s: String): Boolean {
         val l = s.lowercase()
-        return l.contains("/") || l.contains("analizador") || l.contains("lactomat") ||
-               l.contains("mode") || l.contains("sn") || l.contains("temp") ||
-               Regex("""^\d{2}\.\d{2}$""").containsMatchIn(s)  // hora "08.40"
+        return l.contains("analizador") || l.contains("lactomat") ||
+               l.contains(" mode") || l.contains("mode:") ||
+               l.contains("sn:") || l.contains("sn ") ||
+               l.contains("temp") ||
+               Regex("""\d{2}[./]\d{2}[./]\d{2}""").containsMatchIn(s) || // fecha
+               Regex("""^\d{2}[.:]\d{2}\s*$""").containsMatchIn(s)         // hora sola
     }
 
-    // ── Localizar el índice de una clave ──────────────────────────────────
-    fun idxDe(vararg claves: String): Int {
-        for (clave in claves)
-            lineas.indexOfFirst { it.lowercase().contains(clave.lowercase()) }
-                .takeIf { it >= 0 }?.let { return it }
-        return -1
+    // ── Extraer número de texto libre ─────────────────────────────────────
+    fun extraerNumero(s: String): String {
+        // Artefacto ".NNNx" → "N.NN" (OCR pierde primer dígito del decimal)
+        Regex("""^\s*\.(\d{2,3})[Xx]?\s*$""").find(s)?.let { m ->
+            val d = m.groupValues[1]
+            return "${d[0]}.${d.substring(1)}"
+        }
+        // Número negativo decimal
+        Regex("""-\d+\.\d+""").find(s)?.let { return it.value }
+        // Número positivo decimal
+        Regex("""\b\d+\.\d+""").find(s)?.let { return it.value }
+        // Entero razonable (1-3 dígitos, excluye series largas)
+        Regex("""\b(\d{1,3})\b""").findAll(s).toList()
+            .filter { m ->
+                val v = m.value.toIntOrNull() ?: return@filter false
+                v in 0..999
+            }
+            .maxByOrNull { it.value.length }
+            ?.let { return it.value }
+        return ""
     }
 
-    // ── Extraer valor dentro de la ventana [desde, hasta) ─────────────────
-    // Recorre líneas desde `desde` hasta `hasta` (exclusive) buscando el primer número.
-    fun valorEnVentana(desde: Int, hasta: Int): String {
-        if (desde < 0) return ""
-        val fin = minOf(hasta, lineas.size)
-        for (i in desde until fin) {
-            val linea = lineas[i]
+    // ── CAPA 1: Regex sobre texto preprocesado — busca etiqueta+valor en texto completo ──
+    // Pattern: etiqueta (espacios/puntos opcionales) [-]NÚMERO
+    fun buscarRegexGlobal(vararg patrones: String): String {
+        for (patron in patrones) {
+            // Intenta capturar decimal negativo, decimal positivo, entero
+            val regex = Regex(
+                """(?i)$patron[\s.,:]*(-?\d+\.\d+)""",
+                RegexOption.IGNORE_CASE
+            )
+            regex.find(textoPrep)?.groupValues?.get(1)?.let { return it }
+        }
+        return ""
+    }
+
+    // ── CAPA 2: busca el valor en la línea de la etiqueta o la siguiente ──
+    fun buscarEnLineas(vararg claves: String): String {
+        for (idx in lineas.indices) {
+            val linea = lineas[idx]
+            if (claves.none { linea.lowercase().contains(it.lowercase()) }) continue
             if (esRuido(linea)) continue
-            val n = extraerNum(linea)
+
+            // Parte derecha de la misma línea (tras la clave)
+            for (clave in claves) {
+                val pos = linea.lowercase().indexOf(clave.lowercase())
+                if (pos >= 0) {
+                    val derecha = linea.substring(pos + clave.length)
+                    val n = extraerNumero(derecha)
+                    if (n.isNotBlank()) return n
+                }
+            }
+
+            // Líneas siguientes (hasta 3), parando si es otra etiqueta o ruido
+            val etiquetasConocidas = listOf("grasa","sng","densidad","proteina","proteína",
+                "lactosa","sales","total","agua","punto","ph")
+            for (i in (idx + 1)..minOf(idx + 3, lineas.size - 1)) {
+                val sig = lineas[i]
+                if (esRuido(sig)) continue
+                if (etiquetasConocidas.any { sig.lowercase().contains(it) }) break
+                val n = extraerNumero(sig)
+                if (n.isNotBlank()) return n
+            }
+        }
+        return ""
+    }
+
+    // ── Combinar capas: primero regex global, luego línea a línea ─────────
+    fun campo(regexPatrones: Array<out String>, clavesLinea: Array<out String>): String {
+        val r1 = buscarRegexGlobal(*regexPatrones)
+        if (r1.isNotBlank()) return r1
+        return buscarEnLineas(*clavesLinea)
+    }
+
+    // ── Caso especial: pH ─────────────────────────────────────────────────
+    // Puede aparecer como "pH...11.5" o la línea "pH" sola seguida de
+    // "08:40 01/09/26" (hora/fecha) y luego "11.5"
+    fun buscarPh(): String {
+        // Intentar en texto con regex
+        Regex("""(?i)\bph[\s.,:]*(\d+\.\d+)""").find(textoPrep)?.groupValues?.get(1)?.let { return it }
+        // Buscar el índice de "ph" en las líneas
+        val idx = lineas.indexOfFirst { it.lowercase().contains("ph") && !esRuido(it) }
+        if (idx < 0) return ""
+        // Buscar el primer número que NO sea una fecha/hora en las líneas siguientes
+        for (i in idx..minOf(idx + 5, lineas.size - 1)) {
+            val s = lineas[i]
+            if (esRuido(s)) continue
+            // Saltear si parece hora (08.40) o tiene "/"
+            if (s.contains("/")) continue
+            if (Regex("""^\d{2}\.\d{2}$""").containsMatchIn(s)) continue
+            // Extraer el número de la parte derecha si tiene "ph"
+            val pos = s.lowercase().indexOf("ph")
+            val buscar = if (pos >= 0) s.substring(pos + 2) else s
+            val n = extraerNumero(buscar)
             if (n.isNotBlank()) return n
         }
         return ""
     }
 
-    // ── Localizar todos los campos ────────────────────────────────────────
-    val idxGrasa  = idxDe("Grasa")
-    val idxSng    = idxDe("SNG", "Sng")
-    val idxDens   = idxDe("Densidad")
-    val idxProt   = idxDe("Proteina", "Proteína")
-    val idxLact   = idxDe("Lactosa")
-    val idxSales  = idxDe("Sales")
-    val idxTotal  = idxDe("Total sol", "Total")
-    val idxAgua   = idxDe("Agua")
-    val idxPunto  = idxDe("Punto")
-    val idxPh     = idxDe("ph")
-
-    // Orden de aparición en el ticket → define las ventanas
-    // ventana(A) = [idxA .. idxSiguiente)
-    // Para el último campo (pH) la ventana es [idxPh .. fin]
-    // pero saltando líneas con "/" (fecha)
-    fun ventanaHasta(desde: Int, vararg siguientes: Int): Int {
-        val proxima = siguientes.filter { it > desde }.minOrNull() ?: lineas.size
-        return proxima
+    // ── Caso especial: Grasa ──────────────────────────────────────────────
+    // En el ticket real: "Grasa.........16.3%"
+    // El OCR a veces lee "Grasa." separado de "16.3" en distintas líneas
+    // O puede leer todo junto. Usamos regex más amplio.
+    fun buscarGrasa(): String {
+        // Regex en texto completo: "Grasa" seguido de cualquier cosa hasta un número
+        Regex("""(?i)grasa[\s.,.:*x%\d]*?(\d+\.?\d*)""").find(textoPrep)?.let { m ->
+            val v = m.groupValues[1]
+            // Validar que sea razonable para grasa (1.0 – 30.0 %)
+            val d = v.toDoubleOrNull()
+            if (d != null && d >= 1.0 && d <= 30.0) return v
+        }
+        return buscarEnLineas("grasa")
     }
 
-    // Punto cong: asegurar captura del signo negativo
-    fun valorPuntoCong(): String {
-        if (idxPunto < 0) return ""
-        val hasta = ventanaHasta(idxPunto, idxPh)
-        for (i in idxPunto until minOf(hasta + 2, lineas.size)) {
-            val linea = lineas[i]
-            if (esRuido(linea)) continue
-            Regex("""-\d+\.\d+""").find(linea)?.let { return it.value }
-            Regex("""\d+\.\d+""").find(linea)?.let { return it.value }
+    // ── Caso especial: Densidad ───────────────────────────────────────────
+    // El OCR puede leer "Densidad ,.18.2" → necesitamos "18.2"
+    fun buscarDensidad(): String {
+        Regex("""(?i)densidad[\s.,: *]*(\d+\.?\d*)""").find(textoPrep)?.let { m ->
+            val v = m.groupValues[1]
+            val d = v.toDoubleOrNull()
+            if (d != null && d > 0) return v
+        }
+        return buscarEnLineas("densidad")
+    }
+
+    // ── Caso especial: SNG ────────────────────────────────────────────────
+    // OCR puede leer ".718X" = 7.18
+    fun buscarSng(): String {
+        val v1 = buscarRegexGlobal("sng")
+        if (v1.isNotBlank()) return v1
+        // Intentar artefacto ".NNNx"
+        val idxSng = lineas.indexOfFirst { it.lowercase().contains("sng") }
+        if (idxSng >= 0) {
+            for (i in idxSng..(minOf(idxSng + 3, lineas.size - 1))) {
+                val s = lineas[i]
+                // Buscar artefacto punto-inicial
+                Regex("""\.(\d{2,3})[Xx]?""").find(s)?.let { m ->
+                    val d = m.groupValues[1]
+                    val reconstruido = "${d[0]}.${d.substring(1)}"
+                    if (reconstruido.toDoubleOrNull() != null) return reconstruido
+                }
+                val n = extraerNumero(lineas[i].lowercase().substringAfter("sng"))
+                if (n.isNotBlank()) return n
+            }
         }
         return ""
     }
 
-    // pH: saltar líneas con "/" o ":" que sean hora/fecha
-    fun valorPh(): String {
-        if (idxPh < 0) return ""
-        for (i in idxPh until lineas.size) {
-            val linea = lineas[i]
-            if (linea.contains("/")) continue
-            if (Regex("""^\d{2}\.\d{2}$""").containsMatchIn(linea)) continue // hora
-            val n = extraerNum(linea)
-            if (n.isNotBlank()) return n
-        }
-        return ""
+    // ── Caso especial: Punto cong — necesita capturar negativo ────────────
+    fun buscarPuntoCong(): String {
+        // Buscar "-0.5xx" o "-0,5xx" cerca de "punto" o "cong"
+        Regex("""(?i)(?:punto|cong)[\s.,: *]*(-\d+\.\d+)""").find(textoPrep)?.groupValues?.get(1)?.let { return it }
+        Regex("""(?i)(?:punto|cong)[\s.,: *]*(\d+\.\d+)""").find(textoPrep)?.groupValues?.get(1)?.let { return it }
+        return buscarEnLineas("punto cong", "punto")
     }
 
-    val textoNorm = lineas.joinToString("\n")
-
+    // ── Construir resultado ───────────────────────────────────────────────
     return DatosOCR(
         uri          = uri,
-        textoOCR     = textoNorm,
-        grasa        = valorEnVentana(idxGrasa,  ventanaHasta(idxGrasa,  idxSng, idxDens, idxProt, idxLact)),
-        sng          = valorEnVentana(idxSng,    ventanaHasta(idxSng,    idxDens, idxProt, idxLact)),
-        densidad     = valorEnVentana(idxDens,   ventanaHasta(idxDens,   idxProt, idxLact, idxSales)),
-        proteina     = valorEnVentana(idxProt,   ventanaHasta(idxProt,   idxLact, idxSales, idxTotal)),
-        lactosa      = valorEnVentana(idxLact,   ventanaHasta(idxLact,   idxSales, idxTotal, idxAgua)),
-        sales        = valorEnVentana(idxSales,  ventanaHasta(idxSales,  idxTotal, idxAgua, idxPunto)),
-        totalSolidos = valorEnVentana(idxTotal,  ventanaHasta(idxTotal,  idxAgua, idxPunto, idxPh)),
-        aguaAnadida  = valorEnVentana(idxAgua,   ventanaHasta(idxAgua,   idxPunto, idxPh)),
-        puntoCongel  = valorPuntoCong(),
-        ph           = valorPh()
+        textoOCR     = lineas.joinToString("\n"),
+        grasa        = buscarGrasa(),
+        sng          = buscarSng(),
+        densidad     = buscarDensidad(),
+        proteina     = campo(arrayOf("proteina", "proteína"), arrayOf("proteina", "proteína")),
+        lactosa      = campo(arrayOf("lactosa"),              arrayOf("lactosa")),
+        sales        = campo(arrayOf("sales"),                arrayOf("sales")),
+        totalSolidos = campo(arrayOf("total sol", "total s"), arrayOf("total sol", "total")),
+        aguaAnadida  = campo(arrayOf("agua"),                 arrayOf("agua")),
+        puntoCongel  = buscarPuntoCong(),
+        ph           = buscarPh()
     )
 }

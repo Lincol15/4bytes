@@ -74,15 +74,16 @@ private val RojoAdmin  = Color(0xFFC62828)
 private data class ItemMenu(val icono: String, val titulo: String, val indice: Int)
 
 private val MENU_ITEMS = listOf(
-    ItemMenu("🏠", "Inicio",        0),
-    ItemMenu("👥", "Usuarios",      1),
-    ItemMenu("🚜", "Acopiadores",   2),
-    ItemMenu("🌾", "Productores",   3),
-    ItemMenu("💳", "Pagos",         4),
-    ItemMenu("🔬", "Calidad",       5),
-    ItemMenu("📣", "Quejas",        6),
-    ItemMenu("📢", "Avisos",        7),
-    ItemMenu("⚙️", "Configuración", 8)
+    ItemMenu("🏠", "Inicio",           0),
+    ItemMenu("👥", "Usuarios",         1),
+    ItemMenu("🚜", "Acopiadores",      2),
+    ItemMenu("🌾", "Productores",      3),
+    ItemMenu("💳", "Pagos",            4),
+    ItemMenu("🔬", "Calidad",          5),
+    ItemMenu("📣", "Quejas",           6),
+    ItemMenu("📢", "Avisos",           7),
+    ItemMenu("💰", "Actualizar precio",8),
+    ItemMenu("⚙️", "Configuración",   9)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -249,7 +250,8 @@ fun AdminHomeScreen(
                          )
                     6 -> QuejasAdminTab()
                     7 -> AvisosTab()
-                    8 -> ConfiguracionTab()
+                    8 -> ActualizarPrecioTab()
+                    9 -> ConfiguracionSistemaTab()
                 }
             }
         }
@@ -1288,34 +1290,72 @@ private fun FormularioAviso(
 }
 
 @Composable
-private fun ConfiguracionTab() {
-    var precioTexto by remember { mutableStateOf(ConfiguracionPlanta.precioPorLitro.toString()) }
-    var guardado by remember { mutableStateOf(false) }
-
+private fun ActualizarPrecioTab() {
+    var precioTexto  by remember { mutableStateOf(ConfiguracionPlanta.precioPorLitro.toString()) }
+    var guardado     by remember { mutableStateOf(false) }
     val precioValido = precioTexto.toDoubleOrNull()?.let { it > 0 } ?: false
 
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
+        contentPadding      = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Configuración de la planta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("💰 Actualizar precio por litro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Este precio se aplica a los pagos de todos los productores", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            // Precio actual vigente
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.1f)),
+                shape    = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier              = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Precio vigente actual", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text("Ecolácteos Huata · temporada actual", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(
+                        "S/ ${ConfiguracionPlanta.precioPorLitro} / L",
+                        style      = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = VerdeHuata
+                    )
+                }
+            }
         }
         item {
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("💰 Precio por litro de leche", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Nuevo precio por litro", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
-                        value = precioTexto,
-                        onValueChange = { precioTexto = it; guardado = false },
-                        label = { Text("Precio (S/)") },
-                        prefix = { Text("S/ ") },
-                        singleLine = true,
+                        value          = precioTexto,
+                        onValueChange  = { precioTexto = it; guardado = false },
+                        label          = { Text("Precio (S/)") },
+                        prefix         = { Text("S/ ") },
+                        suffix         = { Text("por litro") },
+                        singleLine     = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = !precioValido && precioTexto.isNotBlank(),
+                        isError        = !precioValido && precioTexto.isNotBlank(),
                         supportingText = { if (!precioValido && precioTexto.isNotBlank()) Text("Ingresa un número mayor a 0") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier       = Modifier.fillMaxWidth()
                     )
+                    if (guardado) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors   = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.12f)),
+                            shape    = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("✅", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
+                                Text("Precio actualizado a S/ ${ConfiguracionPlanta.precioPorLitro}/L", style = MaterialTheme.typography.bodySmall, color = VerdeHuata, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                     Button(
                         onClick = {
                             val nuevo = precioTexto.toDoubleOrNull()
@@ -1324,33 +1364,183 @@ private fun ConfiguracionTab() {
                                 guardado = true
                             }
                         },
-                        enabled = precioValido,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
-                    ) { Text("Actualizar precio") }
+                        enabled  = precioValido && !guardado,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+                    ) { Text("Actualizar precio", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                shape    = RoundedCornerShape(10.dp)
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                    Text("⚠️", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Al actualizar el precio, los pagos nuevos se calcularán con este valor. Los pagos ya generados no se modifican.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF5D4037)
+                    )
+                }
+            }
+        }
+    }
+}
 
-                    if (guardado) {
-                        Text(
-                            text = "✅ Precio actualizado a S/ ${ConfiguracionPlanta.precioPorLitro} por litro",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = VerdeHuata
-                        )
+@Composable
+private fun ConfiguracionSistemaTab() {
+    var nombre    by remember { mutableStateOf(ConfiguracionPlanta.nombre) }
+    var slogan    by remember { mutableStateOf(ConfiguracionPlanta.slogan) }
+    var ruc       by remember { mutableStateOf(ConfiguracionPlanta.ruc) }
+    var direccion by remember { mutableStateOf(ConfiguracionPlanta.direccion) }
+    var telefono  by remember { mutableStateOf(ConfiguracionPlanta.telefono) }
+    var correo    by remember { mutableStateOf(ConfiguracionPlanta.correo) }
+    var distrito  by remember { mutableStateOf(ConfiguracionPlanta.distrito) }
+    var provincia by remember { mutableStateOf(ConfiguracionPlanta.provincia) }
+    var region    by remember { mutableStateOf(ConfiguracionPlanta.region) }
+    var litrosMin by remember { mutableStateOf(ConfiguracionPlanta.litrosMinimosEntrega.toString()) }
+    var litrosMax by remember { mutableStateOf(ConfiguracionPlanta.litrosMaximosEntrega.toString()) }
+    var diasCiclo by remember { mutableStateOf(ConfiguracionPlanta.diasPagoCiclo.toString()) }
+    var guardado  by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        contentPadding      = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("⚙️ Configuración del sistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Ajusta todos los parámetros de Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // ── Información de la empresa ──────────────────────────────────────
+        item {
+            SeccionConfig("🏢 Información de la empresa")
+        }
+        item {
+            OutlinedTextField(value = nombre, onValueChange = { nombre = it; guardado = false }, label = { Text("Nombre de la empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+        item {
+            OutlinedTextField(value = slogan, onValueChange = { slogan = it; guardado = false }, label = { Text("Slogan") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+        item {
+            OutlinedTextField(value = ruc, onValueChange = { if (it.length <= 11) ruc = it.filter { c -> c.isDigit() }; guardado = false }, label = { Text("RUC") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        }
+        item {
+            OutlinedTextField(value = direccion, onValueChange = { direccion = it; guardado = false }, label = { Text("Dirección") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = telefono, onValueChange = { telefono = it; guardado = false }, label = { Text("Teléfono") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.weight(1f))
+                OutlinedTextField(value = correo, onValueChange = { correo = it; guardado = false }, label = { Text("Correo") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.weight(1f))
+            }
+        }
+
+        // ── Ubicación ──────────────────────────────────────────────────────
+        item { SeccionConfig("📍 Ubicación") }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = distrito, onValueChange = { distrito = it; guardado = false }, label = { Text("Distrito") }, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = provincia, onValueChange = { provincia = it; guardado = false }, label = { Text("Provincia") }, singleLine = true, modifier = Modifier.weight(1f))
+            }
+        }
+        item {
+            OutlinedTextField(value = region, onValueChange = { region = it; guardado = false }, label = { Text("Región") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+
+        // ── Límites operativos ─────────────────────────────────────────────
+        item { SeccionConfig("📊 Límites operativos") }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = litrosMin, onValueChange = { litrosMin = it; guardado = false },
+                    label = { Text("Litros mínimos/entrega") }, suffix = { Text("L") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = litrosMax, onValueChange = { litrosMax = it; guardado = false },
+                    label = { Text("Litros máximos/entrega") }, suffix = { Text("L") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = diasCiclo, onValueChange = { diasCiclo = it; guardado = false },
+                label = { Text("Días por ciclo de pago") }, suffix = { Text("días") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // ── Info del sistema ───────────────────────────────────────────────
+        item { SeccionConfig("ℹ️ Información del sistema") }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(containerColor = RojoAdmin.copy(0.06f)),
+                shape    = RoundedCornerShape(10.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    InfoRow("📱 Versión de la app",  ConfiguracionPlanta.VERSION_APP)
+                    InfoRow("🗄️ Base de datos",      ConfiguracionPlanta.VERSION_BD)
+                    InfoRow("👨‍💻 Desarrollado por",   ConfiguracionPlanta.DESARROLLADOR)
+                    InfoRow("🔑 Sistema",             "4bytes — Gestión Ecolácteos")
+                }
+            }
+        }
+
+        // ── Botón guardar ──────────────────────────────────────────────────
+        if (guardado) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.12f)), shape = RoundedCornerShape(8.dp)) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("✅", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
+                        Text("Configuración guardada correctamente", style = MaterialTheme.typography.bodySmall, color = VerdeHuata, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("ℹ️ Información del sistema", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Planta: ${ConfiguracionPlanta.NOMBRE}", style = MaterialTheme.typography.bodySmall)
-                    Text("Slogan: ${ConfiguracionPlanta.SLOGAN}", style = MaterialTheme.typography.bodySmall)
-                    Text("Precio vigente: S/ ${ConfiguracionPlanta.precioPorLitro}/L", style = MaterialTheme.typography.bodySmall)
-                    Text("Versión: 1.0.0", style = MaterialTheme.typography.bodySmall)
-                    Text("BD: SQLite / SQLDelight (en desarrollo)", style = MaterialTheme.typography.bodySmall)
-                }
-            }
+            Button(
+                onClick = {
+                    ConfiguracionPlanta.nombre    = nombre.trim()
+                    ConfiguracionPlanta.slogan    = slogan.trim()
+                    ConfiguracionPlanta.ruc       = ruc.trim()
+                    ConfiguracionPlanta.direccion = direccion.trim()
+                    ConfiguracionPlanta.telefono  = telefono.trim()
+                    ConfiguracionPlanta.correo    = correo.trim()
+                    ConfiguracionPlanta.distrito  = distrito.trim()
+                    ConfiguracionPlanta.provincia = provincia.trim()
+                    ConfiguracionPlanta.region    = region.trim()
+                    ConfiguracionPlanta.litrosMinimosEntrega = litrosMin.toDoubleOrNull() ?: 0.0
+                    ConfiguracionPlanta.litrosMaximosEntrega = litrosMax.toDoubleOrNull() ?: 5000.0
+                    ConfiguracionPlanta.diasPagoCiclo        = diasCiclo.toIntOrNull() ?: 7
+                    guardado = true
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+            ) { Text("Guardar configuración", fontWeight = FontWeight.Bold) }
         }
+        item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun SeccionConfig(titulo: String) {
+    Column {
+        HorizontalDivider()
+        Spacer(Modifier.height(4.dp))
+        Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = RojoAdmin)
+        Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, valor: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(valor, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }

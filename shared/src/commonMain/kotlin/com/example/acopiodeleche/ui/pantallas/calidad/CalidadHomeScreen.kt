@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -111,7 +112,7 @@ fun CalidadHomeScreen(
 // FORMULARIO
 // ─────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
     val productores = DatosMock.productores.filter { it.estado }
@@ -195,26 +196,67 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
         // Resultado OCR
         if (ocrListo && imagenUri.isNotBlank()) {
             item {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = AzulCalidad.copy(0.08f)), shape = RoundedCornerShape(12.dp)) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("✅", fontSize = 24.sp)
-                        Spacer(Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Ticket leído correctamente", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AzulCalidad)
-                            Text("Valores auto-rellenados. Verifica y corrige si es necesario.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (textoOCR.isNotBlank()) {
-                                Spacer(Modifier.height(6.dp))
-                                // DEBUG: texto OCR completo para diagnosticar el parser
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = CardDefaults.cardColors(containerColor = AzulCalidad.copy(0.08f)),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("✅", fontSize = 28.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "── Texto OCR raw ──\n$textoOCR",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
+                                    "Ticket leído correctamente",
+                                    style      = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = AzulCalidad
+                                )
+                                Text(
+                                    "Analizador LACTOMAT — valores cargados automáticamente",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            TextButton(onClick = {
+                                imagenUri = ""; ocrListo = false
+                                grasa = ""; sng = ""; densidad = ""; proteina = ""
+                                lactosa = ""; sales = ""; totalSolidos = ""
+                                aguaAnadida = ""; puntoCongel = ""; ph = ""
+                                origenDatos = OrigenDatos.MANUAL
+                            }) {
+                                Text("✕", color = Color.Red, fontWeight = FontWeight.Bold)
+                            }
                         }
-                        TextButton(onClick = { imagenUri = ""; ocrListo = false; origenDatos = OrigenDatos.MANUAL }) {
-                            Text("✕", color = Color.Red, fontWeight = FontWeight.Bold)
+                        // Mostrar resumen de valores leídos
+                        if (grasa.isNotBlank() || sng.isNotBlank() || densidad.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement   = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(
+                                    "Grasa" to grasa, "SNG" to sng, "Densidad" to densidad,
+                                    "Proteína" to proteina, "Lactosa" to lactosa, "Sales" to sales,
+                                    "T.Sól" to totalSolidos, "Agua" to aguaAnadida,
+                                    "P.Cong" to puntoCongel, "pH" to ph
+                                ).forEach { (lbl, val_) ->
+                                    if (val_.isNotBlank()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(AzulCalidad.copy(0.12f), RoundedCornerShape(6.dp))
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(
+                                                "$lbl: $val_",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = AzulCalidad,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

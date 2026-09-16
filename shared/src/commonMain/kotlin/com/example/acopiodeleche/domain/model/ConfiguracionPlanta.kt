@@ -1,25 +1,41 @@
 package com.example.acopiodeleche.domain.model
 
 /**
- * Configuración global de la planta — Ecolácteos Huata.
- * El administrador puede modificar estos valores desde la app.
+ * Configuración global del sistema — Ecolácteos Huata.
+ * El administrador puede modificar todos estos valores desde la app.
  */
 object ConfiguracionPlanta {
-    const val NOMBRE = "Ecolácteos Huata"
-    const val SLOGAN = "Disfrute lo Natural"
 
-    // Precio por litro configurable por el administrador
-    var precioPorLitro: Double = 1.70
+    // ── Información de la empresa ──────────────────────────────────────────
+    var nombre:    String = "Ecolácteos Huata"
+    var slogan:    String = "Disfrute lo Natural"
+    var ruc:       String = "20601234567"
+    var direccion: String = "Av. Principal S/N — Huata, Puno"
+    var telefono:  String = "051-123456"
+    var correo:    String = "info@ecolacteoshuata.com"
+    var distrito:  String = "Huata"
+    var provincia: String = "Puno"
+    var region:    String = "Puno"
 
-    // Rango de litros válidos por entrega
-    const val LITROS_MINIMOS = 0.0
-    const val LITROS_MAXIMOS = 5000.0
+    // ── Precios ────────────────────────────────────────────────────────────
+    var precioPorLitro: Double = 1.70   // precio base de compra al productor
 
-    /** Calcula el total a pagar dado los litros entregados */
-    fun calcularTotal(litros: Double): Double =
-        litros * precioPorLitro
+    // ── Límites operativos ─────────────────────────────────────────────────
+    var litrosMinimosEntrega: Double = 0.0
+    var litrosMaximosEntrega: Double = 5000.0
+    var diasPagoCiclo:        Int    = 7          // ciclo semanal por defecto
 
-    /** Texto formateado del precio */
+    // ── Versión del sistema ────────────────────────────────────────────────
+    const val VERSION_APP  = "1.0.0"
+    const val VERSION_BD   = "SQLite / SQLDelight"
+    const val DESARROLLADOR = "Equipo 4bytes"
+
+    // Mantener compatibilidad con código que use las constantes antiguas
+    val NOMBRE  get() = nombre
+    val SLOGAN  get() = slogan
+
+    fun calcularTotal(litros: Double): Double = litros * precioPorLitro
+
     val precioPorLitroFormateado: String
         get() = "S/ $precioPorLitro"
 }

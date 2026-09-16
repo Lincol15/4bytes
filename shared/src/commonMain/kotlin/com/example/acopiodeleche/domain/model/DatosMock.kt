@@ -372,6 +372,38 @@ object DatosMock {
     )
 
     // ----------------------------------------------------------------
+    // RECETAS DE PRODUCCIÓN
+    // ----------------------------------------------------------------
+    val recetas = mutableListOf(
+        Receta(id = "r-1", nombre = "Queso fresco 1kg",   producto = TipoProducto.QUESO,       descripcion = "Queso fresco prensado de 1 kilogramo"),
+        Receta(id = "r-2", nombre = "Queso fresco 2kg",   producto = TipoProducto.QUESO,       descripcion = "Queso fresco prensado de 2 kilogramos"),
+        Receta(id = "r-3", nombre = "Yogur natural 1L",   producto = TipoProducto.YOGUR,       descripcion = "Yogur natural sin azúcar de 1 litro"),
+        Receta(id = "r-4", nombre = "Mantequilla 250g",   producto = TipoProducto.MANTEQUILLA, descripcion = "Mantequilla artesanal de 250 gramos")
+    )
+
+    val recetaDetalles = mutableListOf(
+        // Queso fresco 1kg — insumos por UNIDAD (1 kg de queso)
+        RecetaDetalle(id = "rd-1", idReceta = "r-1", insumo = "Leche",  cantidad = 10.0, unidadMedida = "litros"),
+        RecetaDetalle(id = "rd-2", idReceta = "r-1", insumo = "Cuajo",  cantidad = 0.1,  unidadMedida = "unidades"),
+        RecetaDetalle(id = "rd-3", idReceta = "r-1", insumo = "Sal",    cantidad = 20.0, unidadMedida = "gramos"),
+        // Queso fresco 2kg — insumos por UNIDAD (2 kg de queso)
+        RecetaDetalle(id = "rd-4", idReceta = "r-2", insumo = "Leche",  cantidad = 20.0, unidadMedida = "litros"),
+        RecetaDetalle(id = "rd-5", idReceta = "r-2", insumo = "Cuajo",  cantidad = 0.2,  unidadMedida = "unidades"),
+        RecetaDetalle(id = "rd-6", idReceta = "r-2", insumo = "Sal",    cantidad = 40.0, unidadMedida = "gramos"),
+        // Yogur natural 1L — insumos por UNIDAD (1 litro de yogur)
+        RecetaDetalle(id = "rd-7",  idReceta = "r-3", insumo = "Leche",    cantidad = 1.0,  unidadMedida = "litros"),
+        RecetaDetalle(id = "rd-8",  idReceta = "r-3", insumo = "Fermento", cantidad = 0.05, unidadMedida = "gramos"),
+        RecetaDetalle(id = "rd-9",  idReceta = "r-3", insumo = "Azúcar",   cantidad = 80.0, unidadMedida = "gramos"),
+        // Mantequilla 250g — insumos por UNIDAD (250g de mantequilla)
+        RecetaDetalle(id = "rd-10", idReceta = "r-4", insumo = "Crema de leche", cantidad = 0.5,  unidadMedida = "litros"),
+        RecetaDetalle(id = "rd-11", idReceta = "r-4", insumo = "Sal",            cantidad = 5.0,  unidadMedida = "gramos")
+    )
+
+    // ── Jornadas de producción ──────────────────────────────────────────────
+    val jornadasProduccion  = mutableListOf<ProduccionJornada>()
+    val detallesProduccion  = mutableListOf<ProduccionDetalle>()
+
+    // ----------------------------------------------------------------
     // NOTIFICACIONES DE PRUEBA
     // ----------------------------------------------------------------
     val notificaciones = mutableListOf(
