@@ -220,10 +220,9 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
     // Normalizar para que regex sea más confiable
     val textoPrep = texto
         .replace(Regex("\\.{2,}"), " ")           // puntos relleno → espacio
-        .replace(Regex("[%°]"), " ")               // quitar % y °
-        .replace(Regex("\\s*[Cc]\\s*(?=\\s|\$)"), " ") // " C" unidad → espacio
         .replace(Regex(",\\."), "0.")              // ",." → "0."
         .replace(Regex("(\\d+):(?=[0-9])"), "$1.") // "3:9" → "3.9" (solo cuando hay dígito después)
+        .replace(Regex("\\s*[Cc]\\s*(?=\\s|\$)"), " ") // " C" unidad → espacio
 
     val lineas = textoPrep.lines().map { it.trim() }.filter { it.isNotBlank() }
 
@@ -241,22 +240,37 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
     // ── Extraer número de texto libre ─────────────────────────────────────
     fun extraerNumero(s: String): String {
         // Artefacto ".NNNx" → "N.NN" (OCR pierde primer dígito del decimal)
-        Regex("""^\s*\.(\d{2,3})[Xx]?\s*$""").find(s)?.let { m ->
+        Regex("""^\s*\.(\d{2,3})[Xx%]?\s*$""").find(s)?.let { m ->
             val d = m.groupValues[1]
             return "${d[0]}.${d.substring(1)}"
         }
+        
+        // Número decimal con punto
+        Regex("""\b(\d+\.\d+)\b""").find(s)?.let { return it.groupValues[1] }
+        
         // Número negativo decimal
         Regex("""-\d+\.\d+""").find(s)?.let { return it.value }
-        // Número positivo decimal
-        Regex("""\b\d+\.\d+""").find(s)?.let { return it.value }
-        // Entero razonable (1-3 dígitos, excluye series largas)
+        
+        // Entero razonable (1-3 dígitos, excluye series largas y horas)
         Regex("""\b(\d{1,3})\b""").findAll(s).toList()
             .filter { m ->
                 val v = m.value.toIntOrNull() ?: return@filter false
+                // Excluir números que parecen horas (00-23 seguidos de otro número)
+                if (v in 0..23) {
+                    val idx = m.range.first
+                    // Ver si hay : o . después
+                    if (idx + 2 < s.length) {
+                        val siguiente = s.getOrNull(idx + 2)
+                        if (siguiente == ':' || siguiente == '.') {
+                            return@filter false
+                        }
+                    }
+                }
                 v in 0..999
             }
             .maxByOrNull { it.value.length }
             ?.let { return it.value }
+        
         return ""
     }
 
@@ -313,43 +327,150 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
     }
 
     // ── Caso especial: pH ─────────────────────────────────────────────────
+    // En el ticket: "pH...............11.5"
     // Puede aparecer como "pH...11.5" o la línea "pH" sola seguida de
     // "08:40 01/09/26" (hora/fecha) y luego "11.5"
+    // IMPORTANTE: No confundir con la hora (08.40 o 08:40)
     fun buscarPh(): String {
-        // Intentar en texto con regex
-        Regex("""(?i)\bph[\s.,:]*(\d+\.\d+)""").find(textoPrep)?.groupValues?.get(1)?.let { return it }
-        // Buscar el índice de "ph" en las líneas
-        val idx = lineas.indexOfFirst { it.lowercase().contains("ph") && !esRuido(it) }
-        if (idx < 0) return ""
-        // Buscar el primer número que NO sea una fecha/hora en las líneas siguientes
-        for (i in idx..minOf(idx + 5, lineas.size - 1)) {
-            val s = lineas[i]
-            if (esRuido(s)) continue
-            // Saltear si parece hora (08.40) o tiene "/"
-            if (s.contains("/")) continue
-            if (Regex("""^\d{2}\.\d{2}$""").containsMatchIn(s)) continue
-            // Extraer el número de la parte derecha si tiene "ph"
-            val pos = s.lowercase().indexOf("ph")
-            val buscar = if (pos >= 0) s.substring(pos + 2) else s
-            val n = extraerNumero(buscar)
-            if (n.isNotBlank()) return n
+        val idxPh = lineas.indexOfFirst { 
+            it.lowercase().contains("ph") && !esRuido(it) 
         }
+        
+        if (idxPh >= 0) {
+            val lineaPh = lineas[idxPh]
+            
+            // Intentar extraer de la misma línea después de "pH"
+            val posPh = lineaPh.lowercase().indexOf("ph")
+            val despuesPh = lineaPh.substring(posPh + 2).trim()
+            
+            // Buscar número decimal que NO sea hora (evitar 08.40, 08:40)
+            Regex("""(\d+\.?\d+)""").findAll(despuesPh).forEach { m ->
+                val v = m.value
+                val num = v.toDoubleOrNull()
+                
+                // Validar: pH típico está entre 6.0 y 14.0
+                // Excluir si parece hora (tiene : o es formato HH.MM)
+                if (num != null && num >= 6.0 && num <= 14.0) {
+                    // No es hora si no tiene formato HH:MM o HH.MM donde HH < 24
+                    val partes = v.split(".", ":")
+                    if (partes.size == 2) {
+                        val primera = partes[0].toIntOrNull()
+                        if (primera != null && primera < 24 && partes[1].length == 2) {
+                            // Parece hora, saltar
+                            return@forEach
+                        }
+                    }
+                    return v
+                }
+            }
+            
+            // Buscar en líneas siguientes, saltando horas y fechas
+            for (i in (idxPh + 1)..minOf(idxPh + 5, lineas.size - 1)) {
+                val s = lineas[i]
+                
+                // Saltar si es claramente hora o fecha
+                if (s.contains("/")) continue
+                if (Regex("""^\d{2}[.:]\d{2}$""").containsMatchIn(s)) continue
+                if (esRuido(s)) continue
+                
+                // Buscar números
+                Regex("""(\d+\.?\d+)""").findAll(s).forEach { m ->
+                    val v = m.value
+                    val num = v.toDoubleOrNull()
+                    
+                    if (num != null && num >= 6.0 && num <= 14.0) {
+                        // Verificar que no sea hora
+                        val partes = v.split(".", ":")
+                        if (partes.size == 2) {
+                            val primera = partes[0].toIntOrNull()
+                            if (primera != null && primera < 24 && partes[1].length == 2) {
+                                return@forEach
+                            }
+                        }
+                        return v
+                    }
+                }
+            }
+        }
+        
+        // Regex en texto completo
+        Regex("""(?i)\bph[\s.,:]*(\d+\.?\d+)""").find(textoPrep)?.let { m ->
+            val v = m.groupValues[1]
+            val num = v.toDoubleOrNull()
+            if (num != null && num >= 6.0 && num <= 14.0) return v
+        }
+        
         return ""
     }
 
     // ── Caso especial: Grasa ──────────────────────────────────────────────
-    // En el ticket real: "Grasa.........16.3%"
-    // El OCR a veces lee "Grasa." separado de "16.3" en distintas líneas
-    // O puede leer todo junto. Usamos regex más amplio.
+    // Ticket: "Grasa.........16.3%"
+    // El OCR puede leer: "Grasa 16.3", "Grasa.......16.3", "Grasa 16 3", etc.
     fun buscarGrasa(): String {
-        // Regex en texto completo: "Grasa" seguido de cualquier cosa hasta un número
-        Regex("""(?i)grasa[\s.,.:*x%\d]*?(\d+\.?\d*)""").find(textoPrep)?.let { m ->
-            val v = m.groupValues[1]
-            // Validar que sea razonable para grasa (1.0 – 30.0 %)
-            val d = v.toDoubleOrNull()
-            if (d != null && d >= 1.0 && d <= 30.0) return v
+        // PASO 1: Buscar línea con "Grasa" (case insensitive)
+        for (i in lineas.indices) {
+            val linea = lineas[i].lowercase()
+            if (!linea.contains("grasa")) continue
+            
+            // Obtener la línea original (con mayúsculas)
+            val lineaOriginal = lineas[i]
+            
+            // PASO 2: Extraer TODO después de "grasa"
+            val posGrasa = linea.indexOf("grasa")
+            val despues = lineaOriginal.substring(posGrasa + 5)
+            
+            // PASO 3: Buscar TODOS los números decimales
+            val matches = Regex("""(\d+)[\s.,]*(\d+)""").findAll(despues)
+            for (match in matches) {
+                val parte1 = match.groupValues[1]
+                val parte2 = match.groupValues[2]
+                
+                // Reconstruir como decimal
+                val valor = "$parte1.$parte2"
+                val num = valor.toDoubleOrNull()
+                
+                // Validar rango de grasa: 3% - 20% típico en leche
+                if (num != null && num >= 3.0 && num <= 20.0) {
+                    return valor
+                }
+            }
+            
+            // PASO 4: Buscar número decimal ya formado (16.3)
+            Regex("""(\d+\.\d+)""").find(despues)?.let { m ->
+                val valor = m.value
+                val num = valor.toDoubleOrNull()
+                if (num != null && num >= 3.0 && num <= 20.0) {
+                    return valor
+                }
+            }
+            
+            // PASO 5: Buscar en la siguiente línea si no hay números aquí
+            if (i + 1 < lineas.size) {
+                val siguienteLinea = lineas[i + 1]
+                
+                // Buscar patrón: dígitos separados
+                Regex("""(\d+)[\s.,]+(\d+)""").find(siguienteLinea)?.let { m ->
+                    val parte1 = m.groupValues[1]
+                    val parte2 = m.groupValues[2]
+                    val valor = "$parte1.$parte2"
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num >= 3.0 && num <= 20.0) {
+                        return valor
+                    }
+                }
+                
+                // Buscar decimal ya formado
+                Regex("""(\d+\.\d+)""").find(siguienteLinea)?.let { m ->
+                    val valor = m.value
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num >= 3.0 && num <= 20.0) {
+                        return valor
+                    }
+                }
+            }
         }
-        return buscarEnLineas("grasa")
+        
+        return ""
     }
 
     // ── Caso especial: Densidad ───────────────────────────────────────────
@@ -364,25 +485,103 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
     }
 
     // ── Caso especial: SNG ────────────────────────────────────────────────
-    // OCR puede leer ".718X" = 7.18
+    // Ticket: "SNG...............7.18%"
+    // Problema común: OCR lee "718" sin punto, o ".18" perdiendo el 7
     fun buscarSng(): String {
-        val v1 = buscarRegexGlobal("sng")
-        if (v1.isNotBlank()) return v1
-        // Intentar artefacto ".NNNx"
-        val idxSng = lineas.indexOfFirst { it.lowercase().contains("sng") }
-        if (idxSng >= 0) {
-            for (i in idxSng..(minOf(idxSng + 3, lineas.size - 1))) {
-                val s = lineas[i]
-                // Buscar artefacto punto-inicial
-                Regex("""\.(\d{2,3})[Xx]?""").find(s)?.let { m ->
-                    val d = m.groupValues[1]
-                    val reconstruido = "${d[0]}.${d.substring(1)}"
-                    if (reconstruido.toDoubleOrNull() != null) return reconstruido
+        // PASO 1: Buscar línea con "SNG"
+        for (i in lineas.indices) {
+            val linea = lineas[i].lowercase()
+            if (!linea.contains("sng")) continue
+            
+            val lineaOriginal = lineas[i]
+            
+            // PASO 2: Extraer TODO después de "sng"
+            val posSng = linea.indexOf("sng")
+            val despues = lineaOriginal.substring(posSng + 3)
+            
+            // PASO 3: Buscar patrón ".718" o ".18" (OCR pierde primer dígito o punto)
+            Regex("""\.(\d{2,3})""").find(despues)?.let { m ->
+                val digitos = m.groupValues[1]
+                when (digitos.length) {
+                    3 -> {
+                        // ".718" → "7.18"
+                        val valor = "${digitos[0]}.${digitos.substring(1)}"
+                        val num = valor.toDoubleOrNull()
+                        if (num != null && num >= 6.0 && num <= 10.0) {
+                            return valor
+                        }
+                    }
+                    2 -> {
+                        // ".18" perdió el 7 → probar con 7
+                        val valor = "7.$digitos"
+                        val num = valor.toDoubleOrNull()
+                        if (num != null && num >= 6.0 && num <= 10.0) {
+                            return valor
+                        }
+                    }
                 }
-                val n = extraerNumero(lineas[i].lowercase().substringAfter("sng"))
-                if (n.isNotBlank()) return n
+            }
+            
+            // PASO 4: Buscar "718" sin punto inicial (OCR perdió el punto)
+            Regex("""(\d{3})""").find(despues)?.let { m ->
+                val digitos = m.value
+                if (digitos[0] in '6'..'9') {
+                    // "718" → "7.18"
+                    val valor = "${digitos[0]}.${digitos.substring(1)}"
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num >= 6.0 && num <= 10.0) {
+                        return valor
+                    }
+                }
+            }
+            
+            // PASO 5: Buscar patrón normal: dígitos separados (7 18)
+            Regex("""([6-9])[\s.,]+(\d{1,2})""").find(despues)?.let { m ->
+                val parte1 = m.groupValues[1]
+                val parte2 = m.groupValues[2]
+                val valor = "$parte1.$parte2"
+                val num = valor.toDoubleOrNull()
+                if (num != null && num >= 6.0 && num <= 10.0) {
+                    return valor
+                }
+            }
+            
+            // PASO 6: Buscar decimal ya formado (7.18)
+            Regex("""([6-9]\.\d{1,2})""").find(despues)?.let { m ->
+                val valor = m.value
+                val num = valor.toDoubleOrNull()
+                if (num != null && num >= 6.0 && num <= 10.0) {
+                    return valor
+                }
+            }
+            
+            // PASO 7: Buscar en la siguiente línea
+            if (i + 1 < lineas.size) {
+                val siguienteLinea = lineas[i + 1]
+                
+                // Artefacto ".NNN"
+                Regex("""\.(\d{2,3})""").find(siguienteLinea)?.let { m ->
+                    val digitos = m.groupValues[1]
+                    if (digitos.length >= 2) {
+                        val valor = "${digitos[0]}.${digitos.substring(1)}"
+                        val num = valor.toDoubleOrNull()
+                        if (num != null && num >= 6.0 && num <= 10.0) {
+                            return valor
+                        }
+                    }
+                }
+                
+                // Número normal
+                Regex("""([6-9]\.\d{1,2})""").find(siguienteLinea)?.let { m ->
+                    val valor = m.value
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num >= 6.0 && num <= 10.0) {
+                        return valor
+                    }
+                }
             }
         }
+        
         return ""
     }
 
@@ -395,7 +594,8 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
     }
 
     // ── Construir resultado ───────────────────────────────────────────────
-    return DatosOCR(
+    // Intentar extracción por orden si algunos valores fallan
+    val resultadoPreliminar = DatosOCR(
         uri          = uri,
         textoOCR     = lineas.joinToString("\n"),
         grasa        = buscarGrasa(),
@@ -408,5 +608,117 @@ private fun parsearTicketLactomat(uri: String, texto: String): DatosOCR {
         aguaAnadida  = campo(arrayOf("agua"),                 arrayOf("agua")),
         puntoCongel  = buscarPuntoCong(),
         ph           = buscarPh()
+    )
+    
+    // Si Grasa o SNG están vacíos, intentar extracción secuencial
+    return if (resultadoPreliminar.grasa.isBlank() || resultadoPreliminar.sng.isBlank()) {
+        extraerPorOrdenSecuencial(resultadoPreliminar, lineas)
+    } else {
+        resultadoPreliminar
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXTRACCIÓN POR ORDEN SECUENCIAL (fallback cuando falla la búsqueda directa)
+// Los tickets LACTOMAT siempre tienen el mismo orden de parámetros
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun extraerPorOrdenSecuencial(resultado: DatosOCR, lineas: List<String>): DatosOCR {
+    var nuevaGrasa = resultado.grasa
+    var nuevaSng = resultado.sng
+    
+    // Si Grasa está vacía, buscar más agresivamente
+    if (nuevaGrasa.isBlank()) {
+        // Buscar cualquier línea que tenga "grasa" (case insensitive)
+        val idxGrasa = lineas.indexOfFirst { it.lowercase().contains("grasa") }
+        if (idxGrasa >= 0) {
+            // Buscar en las próximas 3 líneas
+            for (i in idxGrasa..(minOf(idxGrasa + 3, lineas.size - 1))) {
+                val linea = lineas[i]
+                
+                // Patrón 1: "16 3" o "16.3" o "16,3"
+                Regex("""(\d{1,2})[\s.,]+(\d{1,2})""").find(linea)?.let { m ->
+                    val num1 = m.groupValues[1]
+                    val num2 = m.groupValues[2]
+                    
+                    // Solo si el primer número está entre 3-20 (rango de grasa)
+                    val n1 = num1.toIntOrNull()
+                    if (n1 != null && n1 in 3..20) {
+                        nuevaGrasa = "$num1.$num2"
+                        return@let
+                    }
+                }
+                
+                // Patrón 2: Decimal ya formado
+                Regex("""(\d{1,2}\.\d{1,2})""").find(linea)?.let { m ->
+                    val valor = m.value
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num in 3.0..20.0) {
+                        nuevaGrasa = valor
+                        return@let
+                    }
+                }
+            }
+        }
+    }
+    
+    // Si SNG está vacía, buscar más agresivamente  
+    if (nuevaSng.isBlank()) {
+        val idxSng = lineas.indexOfFirst { it.lowercase().contains("sng") }
+        if (idxSng >= 0) {
+            // Buscar en las próximas 3 líneas
+            for (i in idxSng..(minOf(idxSng + 3, lineas.size - 1))) {
+                val linea = lineas[i]
+                
+                // Patrón 1: ".718" (OCR perdió primer dígito y punto)
+                Regex("""\.(\d{3})""").find(linea)?.let { m ->
+                    val digitos = m.groupValues[1]
+                    val valor = "${digitos[0]}.${digitos.substring(1)}"
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num in 6.0..10.0) {
+                        nuevaSng = valor
+                        return@let
+                    }
+                }
+                
+                // Patrón 2: "718" (sin punto inicial)
+                Regex("""(\d{3})""").find(linea)?.let { m ->
+                    val digitos = m.value
+                    if (digitos[0] in '6'..'9') {
+                        val valor = "${digitos[0]}.${digitos.substring(1)}"
+                        val num = valor.toDoubleOrNull()
+                        if (num != null && num in 6.0..10.0) {
+                            nuevaSng = valor
+                            return@let
+                        }
+                    }
+                }
+                
+                // Patrón 3: "7 18" o "7.18"
+                Regex("""([6-9])[\s.,]+(\d{1,2})""").find(linea)?.let { m ->
+                    val valor = "${m.groupValues[1]}.${m.groupValues[2]}"
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num in 6.0..10.0) {
+                        nuevaSng = valor
+                        return@let
+                    }
+                }
+                
+                // Patrón 4: Decimal formado que empiece con 6-9
+                Regex("""([6-9]\.\d{1,2})""").find(linea)?.let { m ->
+                    val valor = m.value
+                    val num = valor.toDoubleOrNull()
+                    if (num != null && num in 6.0..10.0) {
+                        nuevaSng = valor
+                        return@let
+                    }
+                }
+            }
+        }
+    }
+    
+    return resultado.copy(
+        grasa = nuevaGrasa,
+        sng = nuevaSng
     )
 }

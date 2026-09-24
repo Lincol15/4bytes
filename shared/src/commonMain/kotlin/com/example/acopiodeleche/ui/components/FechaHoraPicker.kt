@@ -39,7 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
-// ── Utilidades de fecha/hora (sin kotlinx-datetime para mantener compatibilidad) ──
+// ── Utilidades de fecha/hora ──
+
+// Función expect para obtener la fecha actual (implementada en cada plataforma)
+expect fun obtenerFechaActual(): FechaData
+
+// Función expect para obtener la hora actual (implementada en cada plataforma)
+expect fun obtenerHoraActual(): HoraData
 
 /**
  * Datos de fecha estructurados para el picker.
@@ -49,8 +55,8 @@ data class FechaData(val dia: Int, val mes: Int, val anio: Int) {
         "${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/$anio"
 
     companion object {
-        /** Fecha hardcodeada como "hoy" en el proyecto (contexto: sep 2026). */
-        fun hoy(): FechaData = FechaData(dia = 10, mes = 9, anio = 2026)
+        /** Obtiene la fecha actual del sistema. */
+        fun hoy(): FechaData = obtenerFechaActual()
 
         fun desdeTexto(texto: String): FechaData? {
             val partes = texto.split("/")
@@ -71,8 +77,8 @@ data class HoraData(val hora: Int, val minuto: Int) {
         "${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}"
 
     companion object {
-        /** Hora default al abrir el picker. */
-        fun ahora(): HoraData = HoraData(hora = 7, minuto = 0)
+        /** Obtiene la hora actual del sistema. */
+        fun ahora(): HoraData = obtenerHoraActual()
 
         fun desdeTexto(texto: String): HoraData? {
             val partes = texto.split(":")
