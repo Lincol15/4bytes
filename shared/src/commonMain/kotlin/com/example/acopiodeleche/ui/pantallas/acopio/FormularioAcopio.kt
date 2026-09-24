@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,11 +77,8 @@ fun FormularioAcopio(
     // ── Estado del formulario ────────────────────────────────────────────
     var busqueda                by remember { mutableStateOf("") }
     var productorSeleccionado   by remember { mutableStateOf<Productor?>(null) }
-    var zonaSeleccionada        by remember { mutableStateOf<String?>(null) }
     var litrosTexto             by remember { mutableStateOf("") }
     var observacion             by remember { mutableStateOf("") }
-
-    val zonas = listOf("Comunidad A", "Comunidad B", "Comunidad C")
 
     // Filtro de búsqueda
     val productoresFiltrados = remember(busqueda, productoresAsignados) {
@@ -96,239 +94,454 @@ fun FormularioAcopio(
     val litrosInvalido = litrosTexto.isNotBlank() && (litros == null || litros <= 0)
     val formularioValido = productorSeleccionado != null
             && litros != null && litros > 0
-            && zonaSeleccionada != null
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .verticalScroll(rememberScrollState())
     ) {
-        Text("Registrar acopio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-
-        // ── Info automática del acopiador ────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(alpha = 0.08f)),
-            shape = RoundedCornerShape(10.dp)
+        // ── Encabezado con gradiente ─────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(VerdeHuata, VerdeHuata.copy(alpha = 0.85f))
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("👤", fontSize = 24.sp)
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        nombreAcopiador,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "🚛 $vehiculoAcopiador  •  📍 ${comunidadAcopiador ?: "Sin comunidad"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Column {
                 Text(
-                    "Auto",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = VerdeHuata,
+                    "📝 Registrar Acopio",
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .background(VerdeHuata.copy(0.12f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                    color = Color.White
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Completa la información del acopio de leche",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
         }
 
-        // ── Buscar productor ─────────────────────────────────────────────
-        Text(
-            "Seleccionar productor",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        OutlinedTextField(
-            value = busqueda,
-            onValueChange = {
-                busqueda = it
-                // Si borra la búsqueda y había uno seleccionado, lo mantiene
-            },
-            label = { Text("🔍 Buscar productor") },
-            placeholder = { Text("Nombre, DNI o comunidad...") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Productor seleccionado — chip
-        if (productorSeleccionado != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(VerdeHuata.copy(0.1f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // ── Info automática del acopiador ────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(alpha = 0.08f)),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
-                Text("✅", fontSize = 18.sp)
-                Spacer(Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        productorSeleccionado!!.nombreCompleto,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = VerdeHuata
-                    )
-                    Text(
-                        "${productorSeleccionado!!.comunidad}  •  DNI: ${productorSeleccionado!!.dni}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    "✕",
-                    color = Color.Red,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .clickable { productorSeleccionado = null; busqueda = "" }
-                        .padding(4.dp)
-                )
-            }
-        }
-
-        // Lista de productores filtrados (solo si no hay uno seleccionado)
-        if (productorSeleccionado == null) {
-            if (productoresFiltrados.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        if (productoresAsignados.isEmpty())
-                            "No tienes productores asignados.\nContacta al administrador."
-                        else "Sin resultados para \"$busqueda\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    productoresFiltrados.forEach { p ->
-                        TarjetaProductorSeleccionable(
-                            productor = p,
-                            onSeleccionar = {
-                                productorSeleccionado = p
-                                busqueda = ""
-                            }
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(VerdeHuata.copy(0.15f), RoundedCornerShape(50)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("👤", fontSize = 24.sp)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            nombreAcopiador,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = VerdeHuata
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "🚛 $vehiculoAcopiador",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "📍 ${comunidadAcopiador ?: "Sin comunidad"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(VerdeHuata.copy(0.15f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            "Auto",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = VerdeHuata,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
-        }
 
-        HorizontalDivider()
-
-        // ── Zona ─────────────────────────────────────────────────────────
-        Text(
-            "Seleccionar zona",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            zonas.forEach { zona ->
-                val seleccionada = zonaSeleccionada == zona
-                val colorZona = when (zona) {
-                    "Zona A" -> Color(0xFF1565C0)
-                    "Zona B" -> Color(0xFF2E7D32)
-                    else     -> Color(0xFF6A1B9A)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(
-                            if (seleccionada) colorZona else colorZona.copy(alpha = 0.08f),
-                            RoundedCornerShape(10.dp)
+            // ── Buscar productor ─────────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "1",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(VerdeHuata, RoundedCornerShape(50))
+                                .padding(4.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                        .clickable { zonaSeleccionada = zona }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Seleccionar Productor",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = busqueda,
+                        onValueChange = {
+                            busqueda = it
+                        },
+                        label = { Text("Buscar productor") },
+                        placeholder = { Text("Nombre, DNI o comunidad...") },
+                        leadingIcon = { Text("🔍", fontSize = 20.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    // Productor seleccionado — chip mejorado
+                    if (productorSeleccionado != null) {
+                        Spacer(Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.12f)),
+                            shape = RoundedCornerShape(10.dp),
+                            elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(VerdeHuata.copy(0.2f), RoundedCornerShape(50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("✅", fontSize = 20.sp)
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        productorSeleccionado!!.nombreCompleto,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VerdeHuata
+                                    )
+                                    Text(
+                                        "${productorSeleccionado!!.comunidad}  •  DNI: ${productorSeleccionado!!.dni}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(Color.Red.copy(0.1f), RoundedCornerShape(50))
+                                        .clickable { productorSeleccionado = null; busqueda = "" },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "✕",
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Lista de productores filtrados (solo si no hay uno seleccionado)
+            if (productorSeleccionado == null) {
+                if (productoresFiltrados.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.5f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("🔍", fontSize = 40.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    if (productoresAsignados.isEmpty())
+                                        "No tienes productores asignados"
+                                    else "Sin resultados para \"$busqueda\"",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                if (productoresAsignados.isEmpty()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Contacta al administrador",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "${productoresFiltrados.size} productor${if(productoresFiltrados.size != 1) "es" else ""} disponible${if(productoresFiltrados.size != 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = VerdeHuata,
+                            fontWeight = FontWeight.Bold
+                        )
+                        productoresFiltrados.forEach { p ->
+                            TarjetaProductorSeleccionable(
+                                productor = p,
+                                onSeleccionar = {
+                                    productorSeleccionado = p
+                                    busqueda = ""
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Zona automática (sin selector) ───────────────────────────────────
+            if (productorSeleccionado != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
-                    Text(
-                        zona,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (seleccionada) Color.White else colorZona
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(VerdeHuata.copy(0.15f), RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("📍", fontSize = 22.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Zona / Comunidad",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                productorSeleccionado!!.comunidad,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = VerdeHuata
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(VerdeHuata.copy(0.15f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                "Auto",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = VerdeHuata,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Datos del acopio ─────────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "2",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(VerdeHuata, RoundedCornerShape(50))
+                                .padding(4.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Información del Acopio",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Litros
+                    OutlinedTextField(
+                        value = litrosTexto,
+                        onValueChange = { litrosTexto = it },
+                        label = { Text("Cantidad en Litros *") },
+                        leadingIcon = { Text("🥛", fontSize = 20.sp) },
+                        suffix = { 
+                            Text(
+                                "L", 
+                                fontWeight = FontWeight.Bold,
+                                color = VerdeHuata
+                            ) 
+                        },
+                        isError = litrosInvalido,
+                        supportingText = { 
+                            if (litrosInvalido) {
+                                Text("⚠️ Ingresa un número mayor a 0", color = Color.Red)
+                            } else {
+                                Text("Ingresa la cantidad de leche acopiada")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Observación
+                    OutlinedTextField(
+                        value = observacion,
+                        onValueChange = { observacion = it },
+                        label = { Text("Observaciones (opcional)") },
+                        leadingIcon = { Text("📝", fontSize = 20.sp) },
+                        placeholder = { Text("Calidad, temperatura, incidencias...") },
+                        minLines = 3,
+                        maxLines = 5,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
                     )
                 }
             }
-        }
 
-        HorizontalDivider()
+            // ── Botones ──────────────────────────────────────────────────────
+            Spacer(Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = alCancelar,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) { 
+                    Text(
+                        "Cancelar",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    ) 
+                }
 
-        // ── Litros ───────────────────────────────────────────────────────
-        OutlinedTextField(
-            value = litrosTexto,
-            onValueChange = { litrosTexto = it },
-            label = { Text("Litros *") },
-            suffix = { Text("L") },
-            isError = litrosInvalido,
-            supportingText = { if (litrosInvalido) Text("Ingresa un número mayor a 0") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // ── Observación ──────────────────────────────────────────────────
-        OutlinedTextField(
-            value = observacion,
-            onValueChange = { observacion = it },
-            label = { Text("Observación (opcional)") },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        // ── Botones ──────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = alCancelar,
-                modifier = Modifier.weight(1f)
-            ) { Text("Cancelar") }
-
-            Button(
-                onClick = {
-                    val ahora = FechaData.hoy().formateada()
-                    val horaAhora = HoraData.ahora().formateada()
-                    alGuardar(
-                        RegistroAcopio(
-                            id          = "a-${Random.nextInt(1000, 9999)}",
-                            idProductor = productorSeleccionado!!.idProductor,
-                            acopiador   = nombreAcopiador,
-                            vehiculo    = vehiculoAcopiador,
-                            zona        = zonaSeleccionada ?: productorSeleccionado!!.comunidad,
-                            fecha       = ahora,
-                            hora        = horaAhora,
-                            litros      = litros ?: 0.0,
-                            observacion = observacion.ifBlank { null },
-                            recibido    = false
+                Button(
+                    onClick = {
+                        val ahora = FechaData.hoy().formateada()
+                        val horaAhora = HoraData.ahora().formateada()
+                        alGuardar(
+                            RegistroAcopio(
+                                id          = "a-${Random.nextInt(1000, 9999)}",
+                                idProductor = productorSeleccionado!!.idProductor,
+                                acopiador   = nombreAcopiador,
+                                vehiculo    = vehiculoAcopiador,
+                                zona        = productorSeleccionado!!.comunidad, // Zona automática del productor
+                                fecha       = ahora,
+                                hora        = horaAhora,
+                                litros      = litros ?: 0.0,
+                                observacion = observacion.ifBlank { null },
+                                recibido    = false
+                            )
                         )
+                    },
+                    enabled = formularioValido,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 3.dp,
+                        pressedElevation = 6.dp,
+                        disabledElevation = 0.dp
                     )
-                },
-                enabled = formularioValido,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
-            ) { Text("Guardar", fontWeight = FontWeight.Bold) }
+                ) { 
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "✓",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Guardar Acopio",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -344,35 +557,57 @@ private fun TarjetaProductorSeleccionable(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onSeleccionar() },
-        elevation = CardDefaults.cardElevation(1.dp),
-        shape = RoundedCornerShape(10.dp)
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .background(VerdeHuata.copy(0.12f), RoundedCornerShape(50)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🌾", fontSize = 18.sp)
+                Text("🌾", fontSize = 22.sp)
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     productor.nombreCompleto,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    "${productor.comunidad}  •  DNI: ${productor.dni}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        productor.comunidad,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = VerdeHuata,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        "  •  ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "DNI: ${productor.dni}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Text("›", fontSize = 20.sp, color = VerdeHuata)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(VerdeHuata.copy(0.1f), RoundedCornerShape(50)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("›", fontSize = 24.sp, color = VerdeHuata, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

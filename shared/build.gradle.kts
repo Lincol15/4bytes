@@ -53,6 +53,7 @@ kotlin {
             implementation(libs.sqldelight.android)
             implementation(libs.androidx.activity.compose)
             implementation(libs.mlkit.textrecognition)
+            implementation(libs.coil.compose)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

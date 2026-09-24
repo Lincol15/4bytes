@@ -706,7 +706,7 @@ private fun ResumenChip(icono: String, valor: String, label: String, color: Colo
 @Composable
 private fun DetalleAcopiadorScreen(acopiador: Usuario, onVolver: () -> Unit) {
     var tabActual by remember { mutableStateOf(0) }
-    val tabs = listOf("Registros del día", "Mis productores", "Configurar asignación")
+    val tabs = listOf("Registros del día", "Mis productores", "Configurar asignación", "Configurar vehículo")
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Encabezado
@@ -749,6 +749,7 @@ private fun DetalleAcopiadorScreen(acopiador: Usuario, onVolver: () -> Unit) {
             0 -> RegistrosDiaAcopiador(acopiador)
             1 -> ProductoresAcopiador(acopiador)
             2 -> ConfigurarAsignacion(acopiador)
+            3 -> ConfigurarVehiculo(acopiador)
         }
     }
 }
@@ -996,6 +997,7 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
             Spacer(Modifier.height(4.dp))
             Button(
                 onClick = {
+                    // 1. Guardar la asignación de productores
                     val idx = DatosMock.asignaciones.indexOfFirst { it.idAcopiador == acopiador.id }
                     val nueva = com.example.acopiodeleche.domain.model.AsignacionAcopiador(
                         idAcopiador     = acopiador.id,
@@ -1003,6 +1005,37 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
                     )
                     if (idx == -1) DatosMock.asignaciones.add(nueva)
                     else DatosMock.asignaciones[idx] = nueva
+                    
+                    // 2. Actualizar automáticamente la comunidad y zona del acopiador
+                    // basándose en los productores asignados
+                    val comunidadesAsignadas = DatosMock.productores
+                        .filter { p -> idsAsignados.contains(p.idProductor) }
+                        .map { it.comunidad }
+                        .distinct()
+                    
+                    // Actualizar el usuario acopiador con la nueva comunidad
+                    val idxUsuario = DatosMock.usuarios.indexOfFirst { it.id == acopiador.id }
+                    if (idxUsuario != -1) {
+                        val usuarioActualizado = DatosMock.usuarios[idxUsuario].copy(
+                            comunidad = if (comunidadesAsignadas.size == 1) {
+                                // Si todos los productores son de una sola comunidad
+                                comunidadesAsignadas.first()
+                            } else if (comunidadesAsignadas.isNotEmpty()) {
+                                // Si hay múltiples comunidades, mostrarlas todas
+                                comunidadesAsignadas.joinToString(", ")
+                            } else {
+                                // Si no hay productores asignados
+                                "Sin asignación"
+                            }
+                        )
+                        DatosMock.usuarios[idxUsuario] = usuarioActualizado
+                        
+                        // Si el acopiador está logueado, actualizar también la sesión
+                        if (com.example.acopiodeleche.domain.model.SesionActual.usuario?.id == acopiador.id) {
+                            com.example.acopiodeleche.domain.model.SesionActual.iniciar(usuarioActualizado)
+                        }
+                    }
+                    
                     guardado = true
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -1012,6 +1045,204 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
                     if (guardado) "✅ Asignación guardada" else "Guardar asignación",
                     fontWeight = FontWeight.Bold
                 )
+            }
+        }
+    }
+}
+
+// ── CONFIGURAR VEHÍCULO ───────────────────────────────────────────────────
+@Composable
+private fun ConfigurarVehiculo(acopiador: Usuario) {
+    // Vehículos disponibles
+    val vehiculosDisponibles = listOf(
+        "Furgoneta 01",
+        "Furgoneta 02",
+        "Furgoneta 03",
+        "Motocarga 01"
+    )
+    
+    var vehiculoSeleccionado by remember { mutableStateOf(acopiador.vehiculo ?: "") }
+    var guardado by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                "Asignar vehículo a ${acopiador.nombres}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Selecciona el vehículo que este acopiador utilizará para la recolección de leche.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Vehículo actual
+        if (vehiculoSeleccionado.isNotBlank()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.1f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(VerdeHuata.copy(0.2f), RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🚛", fontSize = 24.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Vehículo actual",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                vehiculoSeleccionado,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = VerdeHuata
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Vehículos disponibles",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Selecciona uno de los vehículos de la flota",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Lista de vehículos
+        items(vehiculosDisponibles) { vehiculo ->
+            val seleccionado = vehiculoSeleccionado == vehiculo
+            val icono = if (vehiculo.contains("Motocarga")) "🏍️" else "🚚"
+            
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        vehiculoSeleccionado = vehiculo
+                        guardado = false
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (seleccionado) VerdeHuata.copy(0.12f)
+                                     else MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(if (seleccionado) 3.dp else 1.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                if (seleccionado) VerdeHuata.copy(0.2f) 
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(50)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(icono, fontSize = 24.sp)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            vehiculo,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
+                            color = if (seleccionado) VerdeHuata else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (seleccionado) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(VerdeHuata, RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("✓", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    // Actualizar el vehículo del acopiador
+                    val idxUsuario = DatosMock.usuarios.indexOfFirst { it.id == acopiador.id }
+                    if (idxUsuario != -1) {
+                        val usuarioActualizado = DatosMock.usuarios[idxUsuario].copy(
+                            vehiculo = vehiculoSeleccionado
+                        )
+                        DatosMock.usuarios[idxUsuario] = usuarioActualizado
+                        
+                        // Si el acopiador está logueado, actualizar también la sesión
+                        if (SesionActual.usuario?.id == acopiador.id) {
+                            SesionActual.iniciar(usuarioActualizado)
+                        }
+                    }
+                    
+                    guardado = true
+                },
+                enabled = vehiculoSeleccionado.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
+            ) {
+                Text(
+                    if (guardado) "✅ Vehículo asignado" else "Guardar asignación",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        
+        if (guardado) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.1f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("✅", fontSize = 20.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "El vehículo se ha asignado correctamente al acopiador.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = VerdeHuata,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }

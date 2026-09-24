@@ -58,6 +58,7 @@ import com.example.acopiodeleche.ui.components.DatosOCR
 import com.example.acopiodeleche.ui.components.FechaData
 import com.example.acopiodeleche.ui.components.HoraData
 import com.example.acopiodeleche.ui.components.ImagenPickerConOCR
+import com.example.acopiodeleche.ui.components.MostrarImagenTicket
 import kotlin.random.Random
 
 private val AzulCalidad = Color(0xFF0277BD)
@@ -145,22 +146,6 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
         item {
             Text("🔬 Nuevo análisis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Analizador LACTOMAT — Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        // Fecha/hora automática
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = AzulCalidad.copy(0.07f)), shape = RoundedCornerShape(10.dp)) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("🕐", fontSize = 22.sp)
-                    Spacer(Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Fecha y hora automáticas", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        Text("${FechaData.hoy().formateada()}  ·  ${HoraData.ahora().formateada()}", style = MaterialTheme.typography.bodySmall, color = AzulCalidad)
-                    }
-                    Text("Auto", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AzulCalidad,
-                        modifier = Modifier.background(AzulCalidad.copy(0.12f), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
-                }
-            }
         }
 
         // Productor
@@ -257,6 +242,31 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
                                     }
                                 }
                             }
+                        }
+                        
+                        // Mostrar la imagen del ticket subida
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = AzulCalidad.copy(0.2f))
+                        Spacer(Modifier.height(12.dp))
+                        
+                        Column {
+                            Text(
+                                "📷 Vista previa del ticket",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = AzulCalidad
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            
+                            MostrarImagenTicket(imagenUri = imagenUri)
+                            
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "✓ La imagen se guardará con el registro",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = VerdeHuata,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 }

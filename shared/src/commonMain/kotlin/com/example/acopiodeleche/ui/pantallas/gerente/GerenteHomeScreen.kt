@@ -46,7 +46,6 @@ import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoProducto
-import com.example.acopiodeleche.ui.pantallas.acopio.AcopioScreen
 import com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen
 import kotlinx.coroutines.launch
 
@@ -226,7 +225,7 @@ fun GerenteHomeScreen(
                 when (seccionActual) {
                     0 -> DashboardGerente()
                     1 -> ProductoresScreen(soloLectura = true)
-                    2 -> AcopioScreen()
+                    2 -> AcopioGerenteTab()
                     3 -> CalidadGerenteTab()
                     4 -> PagosGerenteTab()
                     5 -> ProduccionGerenteTab()
