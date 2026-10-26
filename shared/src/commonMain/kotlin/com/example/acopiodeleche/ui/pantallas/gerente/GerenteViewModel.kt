@@ -48,7 +48,7 @@ class GerenteViewModel(
     }
 
     fun cargar() {
-        val desde = kotlinx.datetime.Clock.System.todayIn(TimeZone.currentSystemDefault()).minus(DatePeriod(days = 30)).toString()
+        val desde = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).minus(DatePeriod(days = 30)).toString()
         viewModelScope.launch { _resumen.value = adminRepository.resumen().aEstadoUi() }
         viewModelScope.launch { _registros.value = recoleccionRepository.listar(desde = desde).aEstadoUi() }
         viewModelScope.launch { _analisis.value = calidadRepository.listar().aEstadoUi() }

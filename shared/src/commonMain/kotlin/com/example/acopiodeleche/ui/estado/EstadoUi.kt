@@ -43,7 +43,7 @@ fun <T> EstadoUi<List<T>>.datosOVacio(): List<T> = (this as? EstadoUi.Exito)?.da
 
 /** Fecha de hoy del dispositivo en el formato de pantalla "dd/MM/yyyy". */
 fun fechaHoyPantalla(): String {
-    val hoy = kotlinx.datetime.Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())
     return "${hoy.dayOfMonth.toString().padStart(2, '0')}/${hoy.monthNumber.toString().padStart(2, '0')}/${hoy.year}"
 }
 

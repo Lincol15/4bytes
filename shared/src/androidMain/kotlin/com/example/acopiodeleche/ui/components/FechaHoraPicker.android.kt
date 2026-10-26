@@ -1,6 +1,7 @@
 package com.example.acopiodeleche.ui.components
 
 import kotlinx.datetime.*
+import kotlin.time.Clock
 
 actual fun obtenerFechaActual(): FechaData {
     val ahora = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())

@@ -30,7 +30,7 @@ class PagosAdminViewModel(
     private val repositorio: PagoRepository = AppContainer.pagoRepository
 ) : ViewModel() {
 
-    private val hoy = kotlinx.datetime.Clock.System.todayIn(TimeZone.currentSystemDefault())
+    private val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())
 
     /** Semana actual (lunes a domingo), en formato "yyyy-MM-dd". */
     val inicioSemana = hoy.minus(DatePeriod(days = hoy.dayOfWeek.isoDayNumber - 1)).toString()

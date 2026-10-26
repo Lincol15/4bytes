@@ -54,7 +54,7 @@ class AdminViewModel(
     }
 
     fun cargar() {
-        val hoy = kotlinx.datetime.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         viewModelScope.launch { _entregasHoy.value = recoleccionRepository.listar(desde = hoy).aEstadoUi() }
         _resumen.value = EstadoUi.Cargando
         _usuarios.value = EstadoUi.Cargando
@@ -125,7 +125,7 @@ class AcopiadorAdminViewModel(
     }
 
     fun cargar() {
-        val hoy = kotlinx.datetime.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         viewModelScope.launch { _entregasHoy.value = repositorio.entregasDeAcopiador(acopiador, hoy).aEstadoUi() }
         viewModelScope.launch { _asignacion.value = repositorio.asignacion(acopiador).aEstadoUi() }
         viewModelScope.launch { _productores.value = productorRepository.listar().aEstadoUi() }
