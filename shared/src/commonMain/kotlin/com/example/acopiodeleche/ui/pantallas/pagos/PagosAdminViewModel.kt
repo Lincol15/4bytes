@@ -2,7 +2,7 @@ package com.example.acopiodeleche.ui.pantallas.pagos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.PagoRepository
 import com.example.acopiodeleche.domain.model.Pago
 import com.example.acopiodeleche.domain.model.PagoAcopiador

@@ -53,7 +53,22 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.scope.Scope
+import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.core.module.dsl.factoryOf
+import com.example.acopiodeleche.domain.usecase.ActualizarProductor
+import com.example.acopiodeleche.domain.usecase.CambiarEstadoProductor
+import com.example.acopiodeleche.domain.usecase.CombinarRecolecciones
+import com.example.acopiodeleche.domain.usecase.DescartarRecoleccion
+import com.example.acopiodeleche.domain.usecase.EliminarProductor
+import com.example.acopiodeleche.domain.usecase.ObservarRecoleccionesPendientes
+import com.example.acopiodeleche.domain.usecase.ObtenerProductores
+import com.example.acopiodeleche.domain.usecase.ObtenerRecolecciones
+import com.example.acopiodeleche.domain.usecase.ReintentarRecoleccion
+import com.example.acopiodeleche.domain.usecase.RegistrarProductor
+import com.example.acopiodeleche.domain.usecase.RegistrarRecoleccion
+import com.example.acopiodeleche.domain.repository.ProductorRepositorio
+import com.example.acopiodeleche.domain.repository.RecoleccionRepositorio
 import org.koin.mp.KoinPlatform
 import org.koin.core.context.startKoin
 import kotlin.time.Clock
@@ -72,8 +87,9 @@ val moduloDatos = module {
     single { ApiClient(cache = get(), conexion = get()) }
 
     single { AuthRepository(AuthApi(get())) }
-    single { ProductorRepository(ProductorApi(get())) }
-    single { RecoleccionRepository(RecoleccionApi(get()), get()) }
+    // Se registran por su clase y por la interfaz del dominio que implementan
+    single { ProductorRepository(ProductorApi(get())) } bind ProductorRepositorio::class
+    single { RecoleccionRepository(RecoleccionApi(get()), get()) } bind RecoleccionRepositorio::class
     single { RutaRepository(RutaApi(get())) }
     single { CalidadRepository(CalidadApi(get())) }
     single { PagoRepository(PagoApi(get())) }
@@ -89,7 +105,22 @@ val moduloDatos = module {
     }
 }
 
-/** ViewModels de cada pantalla; Koin les inyecta los repositorios. */
+/** Casos de uso del dominio (sin estado: uno nuevo por cada uso). */
+val moduloCasosDeUso = module {
+    factoryOf(::ObtenerProductores)
+    factoryOf(::RegistrarProductor)
+    factoryOf(::ActualizarProductor)
+    factoryOf(::EliminarProductor)
+    factoryOf(::CambiarEstadoProductor)
+    factoryOf(::ObtenerRecolecciones)
+    factoryOf(::ObservarRecoleccionesPendientes)
+    factoryOf(::CombinarRecolecciones)
+    factoryOf(::RegistrarRecoleccion)
+    factoryOf(::ReintentarRecoleccion)
+    factoryOf(::DescartarRecoleccion)
+}
+
+/** ViewModels de cada pantalla; Koin les inyecta casos de uso y repositorios. */
 val moduloViewModels = module {
     viewModelOf(::LoginViewModel)
     viewModelOf(::RecoleccionViewModel)
@@ -114,7 +145,7 @@ val moduloViewModels = module {
  */
 fun iniciarKoin(moduloPlataforma: Module) {
     if (KoinPlatform.getKoinOrNull() != null) return
-    val koin = startKoin { modules(moduloPlataforma, moduloDatos, moduloViewModels) }.koin
+    val koin = startKoin { modules(moduloPlataforma, moduloDatos, moduloCasosDeUso, moduloViewModels) }.koin
     SesionActual.almacen = koin.get<AlmacenSesionSql>()
     SesionActual.restaurar(ahoraMs())
 }
@@ -149,7 +180,9 @@ private fun precargas(rol: Rol, alcance: Scope): List<Precarga> = with(alcance) 
         Rol.GERENTE -> listOf(
             { get<AdminRepository>().resumen() },
             { get<CalidadRepository>().listar() },
-            { get<PagoRepository>().listar() }
+            { get<PagoRepository>().listar() },
+            { get<PlantaRepository>().lotes() },
+            { get<PlantaRepository>().ventas() }
         )
         Rol.ADMINISTRADOR -> listOf(
             { get<AdminRepository>().resumen() },

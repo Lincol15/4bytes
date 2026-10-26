@@ -1,6 +1,6 @@
 package com.example.acopiodeleche.data.repository
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.PlantaApi
 import com.example.acopiodeleche.data.remote.dto.InsumoRecetaDto
 import com.example.acopiodeleche.data.remote.dto.ItemProduccionDto
@@ -10,7 +10,7 @@ import com.example.acopiodeleche.data.remote.dto.RegistrarRecetaRequestDto
 import com.example.acopiodeleche.data.remote.dto.RegistrarVentaRequestDto
 import com.example.acopiodeleche.data.remote.dto.fechaPantallaAApi
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.domain.model.InsumoPlanta
 import com.example.acopiodeleche.domain.model.LoteProduccion
 import com.example.acopiodeleche.domain.model.ProductoPlanta

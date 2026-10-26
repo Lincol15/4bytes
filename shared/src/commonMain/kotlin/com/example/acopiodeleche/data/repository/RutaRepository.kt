@@ -1,9 +1,9 @@
 package com.example.acopiodeleche.data.repository
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.RutaApi
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.domain.model.ParadaRuta
 import com.example.acopiodeleche.domain.model.RutaRecoleccion
 

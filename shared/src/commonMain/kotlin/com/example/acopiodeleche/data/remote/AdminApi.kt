@@ -22,6 +22,8 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.map
 
 /** Endpoints de gestión (administrador / gerente). */
 class AdminApi(private val cliente: ApiClient) {

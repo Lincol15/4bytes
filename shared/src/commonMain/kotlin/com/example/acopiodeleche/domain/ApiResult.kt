@@ -1,4 +1,4 @@
-package com.example.acopiodeleche.data.remote
+package com.example.acopiodeleche.domain
 
 /**
  * Resultado de una llamada a la API: éxito con datos o un error ya clasificado

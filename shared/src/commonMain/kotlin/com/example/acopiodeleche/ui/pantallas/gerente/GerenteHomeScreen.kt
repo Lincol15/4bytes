@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
-import com.example.acopiodeleche.domain.model.DatosMock
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoUi
@@ -121,7 +120,7 @@ private fun DashboardGerente(viewModel: GerenteViewModel = koinViewModel()) {
         CargaOError(estadoResumen, onReintentar = viewModel::cargar)
         return
     }
-    val ventas      = DatosMock.ventasSalidas
+    val ventas      = viewModel.ventas.collectAsStateWithLifecycle().value.datosOVacio()
     val analisis    = estadoAnalisis.datosOVacio()
     val pagosRend   = estadoPagos.datosOVacio().count { it.estado == EstadoPago.PENDIENTE }
 
@@ -321,8 +320,14 @@ private fun PagosGerenteTab(viewModel: GerenteViewModel = koinViewModel()) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProduccionGerenteTab() {
-    val lotes = DatosMock.lotesProduccion
+private fun ProduccionGerenteTab(viewModel: GerenteViewModel = koinViewModel()) {
+    // Lotes registrados por la planta, leídos de Laravel
+    val estado by viewModel.lotes.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val lotes = estado.datosOVacio()
 
     if (lotes.isEmpty()) {
         EmptyState("🧀", "Sin lotes de producción", "El trabajador de planta aún no registró lotes")
@@ -370,8 +375,14 @@ private fun ProduccionGerenteTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun VentasGerenteTab() {
-    val ventas      = DatosMock.ventasSalidas
+private fun VentasGerenteTab(viewModel: GerenteViewModel = koinViewModel()) {
+    // Ventas y salidas registradas por la planta, leídas de Laravel
+    val estado by viewModel.ventas.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val ventas      = estado.datosOVacio()
     val totalVentas = ventas.sumOf { it.total }
 
     if (ventas.isEmpty()) {

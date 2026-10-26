@@ -1,7 +1,6 @@
 package com.example.acopiodeleche.di
 
 import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.example.acopiodeleche.data.conexion.MonitorConexion
 import com.example.acopiodeleche.data.conexion.MonitorConexionManual
 import com.example.acopiodeleche.data.local.AlmacenSeguro
@@ -9,7 +8,7 @@ import com.example.acopiodeleche.data.local.AlmacenSeguroEnMemoria
 import com.example.acopiodeleche.data.remote.ApiClient
 import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.data.sync.Sincronizador
-import com.example.acopiodeleche.db.AcopioDatabase
+import com.example.acopiodeleche.data.crearDriverEnMemoria
 import com.example.acopiodeleche.domain.model.Rol
 import com.example.acopiodeleche.domain.model.Usuario
 import com.example.acopiodeleche.ui.auth.LoginViewModel
@@ -46,7 +45,7 @@ import kotlin.test.assertSame
 class ModulosKoinTest {
 
     private val moduloPrueba = module {
-        single<SqlDriver> { JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AcopioDatabase.Schema.create(it) } }
+        single<SqlDriver> { crearDriverEnMemoria() }
         single<AlmacenSeguro> { AlmacenSeguroEnMemoria() }
         single<MonitorConexion> { MonitorConexionManual() }
     }
@@ -65,7 +64,7 @@ class ModulosKoinTest {
 
     @Test
     fun todas_las_dependencias_se_resuelven() {
-        val koin = startKoin { modules(moduloPrueba, moduloDatos, moduloViewModels) }.koin
+        val koin = startKoin { modules(moduloPrueba, moduloDatos, moduloCasosDeUso, moduloViewModels) }.koin
 
         assertSame(koin.get<ApiClient>(), koin.get<ApiClient>())
         assertNotNull(koin.get<RecoleccionRepository>())

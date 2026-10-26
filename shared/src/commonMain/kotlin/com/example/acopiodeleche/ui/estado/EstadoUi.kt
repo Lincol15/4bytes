@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 

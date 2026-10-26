@@ -2,8 +2,12 @@ package com.example.acopiodeleche.ui.pantallas.productores
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
-import com.example.acopiodeleche.data.repository.ProductorRepository
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.usecase.ActualizarProductor
+import com.example.acopiodeleche.domain.usecase.CambiarEstadoProductor
+import com.example.acopiodeleche.domain.usecase.EliminarProductor
+import com.example.acopiodeleche.domain.usecase.ObtenerProductores
+import com.example.acopiodeleche.domain.usecase.RegistrarProductor
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
@@ -13,8 +17,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** CRUD de productores a través de los casos de uso del dominio (validan antes de llamar a la API). */
 class ProductoresViewModel(
-    private val repositorio: ProductorRepository
+    private val obtenerProductores: ObtenerProductores,
+    private val registrarProductor: RegistrarProductor,
+    private val actualizarProductor: ActualizarProductor,
+    private val eliminarProductor: EliminarProductor,
+    private val cambiarEstadoProductor: CambiarEstadoProductor
 ) : ViewModel() {
 
     private val _productores = MutableStateFlow<EstadoUi<List<Productor>>>(EstadoUi.Cargando)
@@ -29,14 +38,14 @@ class ProductoresViewModel(
 
     fun cargar() {
         _productores.value = EstadoUi.Cargando
-        viewModelScope.launch { _productores.value = repositorio.listar().aEstadoUi() }
+        viewModelScope.launch { _productores.value = obtenerProductores().aEstadoUi() }
     }
 
     fun registrar(productor: Productor, correo: String, contrasena: String) {
         if (_envio.value == EstadoEnvio.Enviando) return
         _envio.value = EstadoEnvio.Enviando
         viewModelScope.launch {
-            _envio.value = when (val resultado = repositorio.registrar(productor, correo, contrasena)) {
+            _envio.value = when (val resultado = registrarProductor(productor, correo, contrasena)) {
                 is ApiResult.Exito -> {
                     reemplazarOAgregar(resultado.datos)
                     EstadoEnvio.Exito("Productor ${resultado.datos.nombreCompleto} registrado.")
@@ -50,7 +59,7 @@ class ProductoresViewModel(
         if (_envio.value == EstadoEnvio.Enviando) return
         _envio.value = EstadoEnvio.Enviando
         viewModelScope.launch {
-            _envio.value = when (val resultado = repositorio.actualizar(productor)) {
+            _envio.value = when (val resultado = actualizarProductor(productor)) {
                 is ApiResult.Exito -> {
                     reemplazarOAgregar(resultado.datos)
                     EstadoEnvio.Exito("Datos de ${resultado.datos.nombreCompleto} actualizados.")
@@ -63,7 +72,7 @@ class ProductoresViewModel(
     /** Laravel rechaza (422) eliminar productores con historial; el mensaje sugiere desactivarlo. */
     fun eliminar(productor: Productor) {
         viewModelScope.launch {
-            _envio.value = when (val resultado = repositorio.eliminar(productor)) {
+            _envio.value = when (val resultado = eliminarProductor(productor)) {
                 is ApiResult.Exito -> {
                     val actuales = (_productores.value as? EstadoUi.Exito)?.datos.orEmpty()
                     _productores.value = EstadoUi.Exito(actuales.filterNot { it.idProductor == productor.idProductor })
@@ -76,7 +85,7 @@ class ProductoresViewModel(
 
     fun cambiarEstado(productor: Productor) {
         viewModelScope.launch {
-            _envio.value = when (val resultado = repositorio.cambiarEstado(productor, !productor.estado)) {
+            _envio.value = when (val resultado = cambiarEstadoProductor(productor)) {
                 is ApiResult.Exito -> {
                     reemplazarOAgregar(resultado.datos)
                     EstadoEnvio.Inactivo

@@ -2,9 +2,8 @@ package com.example.acopiodeleche.ui.pantallas.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.CalidadRepository
-import com.example.acopiodeleche.data.repository.ProductorRepository
 import com.example.acopiodeleche.data.repository.SancionRepository
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import com.example.acopiodeleche.domain.model.Productor
@@ -17,12 +16,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.domain.usecase.ObtenerProductores
 
 /** Calidad vista por el administrador: evaluar análisis y emitir sanciones (datos de Laravel). */
 class CalidadAdminViewModel(
     private val calidadRepository: CalidadRepository,
     private val sancionRepository: SancionRepository,
-    private val productorRepository: ProductorRepository
+    private val obtenerProductores: ObtenerProductores
 ) : ViewModel() {
 
     private val _analisis = MutableStateFlow<EstadoUi<List<ControlCalidad>>>(EstadoUi.Cargando)
@@ -47,7 +47,7 @@ class CalidadAdminViewModel(
         _productores.value = EstadoUi.Cargando
         viewModelScope.launch { _analisis.value = calidadRepository.listar().aEstadoUi() }
         viewModelScope.launch { _sanciones.value = sancionRepository.listar().aEstadoUi() }
-        viewModelScope.launch { _productores.value = productorRepository.listar().aEstadoUi() }
+        viewModelScope.launch { _productores.value = obtenerProductores().aEstadoUi() }
     }
 
     fun evaluar(analisis: ControlCalidad, resultado: ResultadoCalidad, motivoRechazo: String?) =

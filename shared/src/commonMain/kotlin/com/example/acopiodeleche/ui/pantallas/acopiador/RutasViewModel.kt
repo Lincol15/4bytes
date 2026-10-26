@@ -2,7 +2,7 @@ package com.example.acopiodeleche.ui.pantallas.acopiador
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.RutaRepository
 import com.example.acopiodeleche.domain.model.ParadaRuta
 import com.example.acopiodeleche.domain.model.RutaRecoleccion

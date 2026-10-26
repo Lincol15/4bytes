@@ -15,6 +15,8 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.map
 
 /** Endpoints de planta (/api/v1/plant): catálogo, recetas, producción y ventas. */
 class PlantaApi(private val cliente: ApiClient) {

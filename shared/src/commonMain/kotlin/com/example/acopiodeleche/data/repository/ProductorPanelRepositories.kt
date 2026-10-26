@@ -1,6 +1,6 @@
 package com.example.acopiodeleche.data.repository
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.CalidadApi
 import com.example.acopiodeleche.data.remote.NotificacionApi
 import com.example.acopiodeleche.data.remote.PagoApi
@@ -18,7 +18,7 @@ import com.example.acopiodeleche.data.remote.dto.RegistrarQuejaRequestDto
 import com.example.acopiodeleche.data.remote.dto.ResponderQuejaRequestDto
 import com.example.acopiodeleche.data.remote.dto.aApi
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import com.example.acopiodeleche.domain.model.EstadoQueja
 import com.example.acopiodeleche.domain.model.Notificacion

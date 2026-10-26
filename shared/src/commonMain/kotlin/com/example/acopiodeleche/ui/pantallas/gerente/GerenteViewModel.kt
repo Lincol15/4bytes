@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.acopiodeleche.data.repository.AdminRepository
 import com.example.acopiodeleche.data.repository.CalidadRepository
 import com.example.acopiodeleche.data.repository.PagoRepository
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import com.example.acopiodeleche.domain.model.Pago
 import com.example.acopiodeleche.domain.model.RegistroAcopio
@@ -20,13 +19,18 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
+import com.example.acopiodeleche.data.repository.PlantaRepository
+import com.example.acopiodeleche.domain.model.LoteProduccion
+import com.example.acopiodeleche.domain.model.VentaSalida
+import com.example.acopiodeleche.domain.usecase.ObtenerRecolecciones
 
 /** Vista gerencial de solo lectura con los datos de Laravel. */
 class GerenteViewModel(
     private val adminRepository: AdminRepository,
-    private val recoleccionRepository: RecoleccionRepository,
+    private val obtenerRecolecciones: ObtenerRecolecciones,
     private val calidadRepository: CalidadRepository,
-    private val pagoRepository: PagoRepository
+    private val pagoRepository: PagoRepository,
+    private val plantaRepository: PlantaRepository
 ) : ViewModel() {
 
     private val _resumen = MutableStateFlow<EstadoUi<ResumenPanel>>(EstadoUi.Cargando)
@@ -42,6 +46,13 @@ class GerenteViewModel(
     private val _pagos = MutableStateFlow<EstadoUi<List<Pago>>>(EstadoUi.Cargando)
     val pagos: StateFlow<EstadoUi<List<Pago>>> = _pagos.asStateFlow()
 
+    /** Lotes de producción y ventas de la planta (mismos datos que ve el trabajador de planta). */
+    private val _lotes = MutableStateFlow<EstadoUi<List<LoteProduccion>>>(EstadoUi.Cargando)
+    val lotes: StateFlow<EstadoUi<List<LoteProduccion>>> = _lotes.asStateFlow()
+
+    private val _ventas = MutableStateFlow<EstadoUi<List<VentaSalida>>>(EstadoUi.Cargando)
+    val ventas: StateFlow<EstadoUi<List<VentaSalida>>> = _ventas.asStateFlow()
+
     init {
         cargar()
     }
@@ -49,8 +60,10 @@ class GerenteViewModel(
     fun cargar() {
         val desde = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).minus(DatePeriod(days = 30)).toString()
         viewModelScope.launch { _resumen.value = adminRepository.resumen().aEstadoUi() }
-        viewModelScope.launch { _registros.value = recoleccionRepository.listar(desde = desde).aEstadoUi() }
+        viewModelScope.launch { _registros.value = obtenerRecolecciones(desde = desde).aEstadoUi() }
         viewModelScope.launch { _analisis.value = calidadRepository.listar().aEstadoUi() }
         viewModelScope.launch { _pagos.value = pagoRepository.listar().aEstadoUi() }
+        viewModelScope.launch { _lotes.value = plantaRepository.lotes().aEstadoUi() }
+        viewModelScope.launch { _ventas.value = plantaRepository.ventas().aEstadoUi() }
     }
 }

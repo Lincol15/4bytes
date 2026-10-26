@@ -11,6 +11,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.map
 
 /** Endpoints de autenticación /api/v1/auth (Laravel Sanctum). */
 class AuthApi(private val cliente: ApiClient) {

@@ -28,6 +28,7 @@ import kotlinx.serialization.json.Json
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
+import com.example.acopiodeleche.domain.ApiResult
 
 /**
  * Cliente HTTP multiplataforma (Ktor) hacia la API REST de Laravel.

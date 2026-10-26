@@ -2,7 +2,7 @@ package com.example.acopiodeleche.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.AuthRepository
 import com.example.acopiodeleche.domain.model.Usuario
 import kotlinx.coroutines.flow.MutableStateFlow

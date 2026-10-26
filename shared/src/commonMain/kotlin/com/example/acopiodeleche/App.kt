@@ -21,7 +21,6 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.example.acopiodeleche.data.remote.EstadoConexion
 import com.example.acopiodeleche.data.repository.AuthRepository
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.data.sync.Sincronizador
 import com.example.acopiodeleche.domain.model.EstadoSync
 import com.example.acopiodeleche.domain.model.Rol
@@ -38,6 +37,7 @@ import com.example.acopiodeleche.ui.pantallas.productor.ProductorHomeScreen
 import com.example.acopiodeleche.ui.tema.TemaHuata
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import com.example.acopiodeleche.domain.usecase.ObservarRecoleccionesPendientes
 
 @Composable
 fun App() {
@@ -48,14 +48,14 @@ fun App() {
         val sesionExpirada by SesionActual.sesionExpirada.collectAsState()
         // Dependencias de Koin (módulos en di/Modulos.kt)
         val estadoConexion = koinInject<EstadoConexion>()
-        val recoleccionRepository = koinInject<RecoleccionRepository>()
+        val observarPendientes = koinInject<ObservarRecoleccionesPendientes>()
         val sincronizador = koinInject<Sincronizador>()
         val authRepository = koinInject<AuthRepository>()
 
         val servidorResponde by estadoConexion.enLinea.collectAsState()
         val hayRed by estadoConexion.hayRed.collectAsState()
         val idUsuario = sesion?.usuario?.id
-        val locales by remember(idUsuario) { recoleccionRepository.pendientes() }
+        val locales by remember(idUsuario) { observarPendientes() }
             .collectAsState(emptyList())
         val scope = rememberCoroutineScope()
 

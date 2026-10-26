@@ -2,7 +2,7 @@ package com.example.acopiodeleche.ui.pantallas.productor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.QuejaRepository
 import com.example.acopiodeleche.domain.model.EstadoQueja
 import com.example.acopiodeleche.domain.model.Queja

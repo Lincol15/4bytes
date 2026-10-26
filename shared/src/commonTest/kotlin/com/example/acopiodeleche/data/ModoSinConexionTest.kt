@@ -1,11 +1,11 @@
 package com.example.acopiodeleche.data
 
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import app.cash.sqldelight.db.SqlDriver
 import com.example.acopiodeleche.data.local.AlmacenSeguroEnMemoria
 import com.example.acopiodeleche.data.local.AlmacenSesionSql
 import com.example.acopiodeleche.data.local.CacheRespuestasSql
 import com.example.acopiodeleche.data.remote.ApiClient
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.ProductorApi
 import com.example.acopiodeleche.data.remote.RecoleccionApi
 import com.example.acopiodeleche.data.repository.ProductorRepository
@@ -38,10 +38,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Modo sin conexión con la base SQLite real (en memoria). */
+/** Modo sin conexión con la base SQLite real (en memoria) en cada plataforma (commonTest). */
 class ModoSinConexionTest {
 
-    private lateinit var driver: JdbcSqliteDriver
+    private lateinit var driver: SqlDriver
     private lateinit var db: AcopioDatabase
     private var hayRed = false
     private var reloj = 1_760_000_000_000L
@@ -86,8 +86,7 @@ class ModoSinConexionTest {
 
     @BeforeTest
     fun crearBase() {
-        driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
-        AcopioDatabase.Schema.create(driver)
+        driver = crearDriverEnMemoria()
         db = AcopioDatabase(driver)
         SesionActual.abrir(SesionUsuario(usuario, token = "1|a", refreshToken = "2|r", tokenExpiraEn = Long.MAX_VALUE, refreshExpiraEn = Long.MAX_VALUE))
     }
@@ -273,7 +272,7 @@ class ModoSinConexionTest {
 
     @Test
     fun la_migracion_1_a_2_quita_los_tokens_en_texto_plano() {
-        val anterior = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        val anterior = crearDriverEnMemoria(conEsquema = false)
         // Tabla sesion de la versión 1 (con tokens en texto plano)
         anterior.execute(
             null,

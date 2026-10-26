@@ -2,8 +2,7 @@ package com.example.acopiodeleche.ui.pantallas.planta
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
@@ -12,10 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.domain.repository.RecoleccionRepositorio
 
 /** Entregas "en tránsito" y registro de su recepción en planta. */
 class RecepcionPlantaViewModel(
-    private val repositorio: RecoleccionRepository
+    private val repositorio: RecoleccionRepositorio
 ) : ViewModel() {
 
     private val _pendientes = MutableStateFlow<EstadoUi<List<RegistroAcopio>>>(EstadoUi.Cargando)

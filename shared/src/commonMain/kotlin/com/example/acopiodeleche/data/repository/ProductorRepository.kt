@@ -1,21 +1,22 @@
 package com.example.acopiodeleche.data.repository
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.ProductorApi
 import com.example.acopiodeleche.data.remote.dto.ActualizarProductorRequestDto
 import com.example.acopiodeleche.data.remote.dto.RegistrarProductorRequestDto
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.domain.model.Productor
+import com.example.acopiodeleche.domain.repository.ProductorRepositorio
 
-class ProductorRepository(private val api: ProductorApi) {
+class ProductorRepository(private val api: ProductorApi) : ProductorRepositorio {
 
-    suspend fun listar(): ApiResult<List<Productor>> =
+    override suspend fun listar(): ApiResult<List<Productor>> =
         obtenerTodasLasPaginas { pagina -> api.listar(pagina) }
             .map { lista -> lista.map { it.toDomain() } }
 
     /** Laravel crea la cuenta del productor (correo + contraseña) y su ficha en una transacción. */
-    suspend fun registrar(productor: Productor, correo: String, contrasena: String): ApiResult<Productor> =
+    override suspend fun registrar(productor: Productor, correo: String, contrasena: String): ApiResult<Productor> =
         api.registrar(
             RegistrarProductorRequestDto(
                 name = productor.nombres,
@@ -31,7 +32,7 @@ class ProductorRepository(private val api: ProductorApi) {
         ).map { it.toDomain() }
 
     /** Guarda los cambios de nombre, DNI, teléfono, dirección, comunidad y estado. */
-    suspend fun actualizar(productor: Productor): ApiResult<Productor> {
+    override suspend fun actualizar(productor: Productor): ApiResult<Productor> {
         val id = idNumerico(productor.idProductor) ?: return ERROR_ID_INVALIDO
         return api.actualizar(
             id,
@@ -47,12 +48,12 @@ class ProductorRepository(private val api: ProductorApi) {
         ).map { it.toDomain() }
     }
 
-    suspend fun eliminar(productor: Productor): ApiResult<Unit> {
+    override suspend fun eliminar(productor: Productor): ApiResult<Unit> {
         val id = idNumerico(productor.idProductor) ?: return ERROR_ID_INVALIDO
         return api.eliminar(id)
     }
 
-    suspend fun cambiarEstado(productor: Productor, activo: Boolean): ApiResult<Productor> {
+    override suspend fun cambiarEstado(productor: Productor, activo: Boolean): ApiResult<Productor> {
         val id = idNumerico(productor.idProductor) ?: return ERROR_ID_INVALIDO
         return api.cambiarEstado(id, activo).map { it.toDomain() }
     }

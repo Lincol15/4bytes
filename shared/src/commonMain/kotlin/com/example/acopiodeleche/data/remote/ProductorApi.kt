@@ -15,6 +15,8 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.map
 
 /** Endpoints /api/v1/producers. Para el acopiador, Laravel devuelve solo sus productores asignados. */
 class ProductorApi(private val cliente: ApiClient) {

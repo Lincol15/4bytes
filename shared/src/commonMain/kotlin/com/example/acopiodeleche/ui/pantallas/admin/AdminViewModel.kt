@@ -2,10 +2,8 @@ package com.example.acopiodeleche.ui.pantallas.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.repository.AdminRepository
-import com.example.acopiodeleche.data.repository.ProductorRepository
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.domain.model.AjustePlanta
 import com.example.acopiodeleche.domain.model.AsignacionAcopiador
 import com.example.acopiodeleche.domain.model.Notificacion
@@ -22,11 +20,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import com.example.acopiodeleche.domain.usecase.ObtenerProductores
+import com.example.acopiodeleche.domain.usecase.ObtenerRecolecciones
 
 /** Panel del administrador: resumen, usuarios, avisos y ajustes de planta leídos de Laravel. */
 class AdminViewModel(
     private val repositorio: AdminRepository,
-    private val recoleccionRepository: RecoleccionRepository
+    private val obtenerRecolecciones: ObtenerRecolecciones
 ) : ViewModel() {
 
     private val _resumen = MutableStateFlow<EstadoUi<ResumenPanel>>(EstadoUi.Cargando)
@@ -54,7 +54,7 @@ class AdminViewModel(
 
     fun cargar() {
         val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
-        viewModelScope.launch { _entregasHoy.value = recoleccionRepository.listar(desde = hoy).aEstadoUi() }
+        viewModelScope.launch { _entregasHoy.value = obtenerRecolecciones(desde = hoy).aEstadoUi() }
         _resumen.value = EstadoUi.Cargando
         _usuarios.value = EstadoUi.Cargando
         _avisos.value = EstadoUi.Cargando
@@ -104,7 +104,7 @@ class AdminViewModel(
 class AcopiadorAdminViewModel(
     private val acopiador: Usuario,
     private val repositorio: AdminRepository,
-    private val productorRepository: ProductorRepository
+    private val obtenerProductores: ObtenerProductores
 ) : ViewModel() {
 
     private val _entregasHoy = MutableStateFlow<EstadoUi<List<RegistroAcopio>>>(EstadoUi.Cargando)
@@ -127,7 +127,7 @@ class AcopiadorAdminViewModel(
         val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         viewModelScope.launch { _entregasHoy.value = repositorio.entregasDeAcopiador(acopiador, hoy).aEstadoUi() }
         viewModelScope.launch { _asignacion.value = repositorio.asignacion(acopiador).aEstadoUi() }
-        viewModelScope.launch { _productores.value = productorRepository.listar().aEstadoUi() }
+        viewModelScope.launch { _productores.value = obtenerProductores().aEstadoUi() }
     }
 
     fun guardarAsignacion(idsProductores: List<String>) {

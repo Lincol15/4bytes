@@ -25,6 +25,8 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.map
 
 /** Endpoints /api/v1/quality-reports. Laravel filtra por rol (el productor ve solo los suyos). */
 class CalidadApi(private val cliente: ApiClient) {

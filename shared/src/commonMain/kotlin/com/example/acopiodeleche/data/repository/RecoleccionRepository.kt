@@ -2,11 +2,11 @@ package com.example.acopiodeleche.data.repository
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.RecoleccionApi
 import com.example.acopiodeleche.data.remote.dto.RegistrarRecoleccionRequestDto
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.db.AcopioDatabase
 import com.example.acopiodeleche.db.Recoleccion_pendiente
 import com.example.acopiodeleche.domain.model.EstadoSync
@@ -25,6 +25,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import com.example.acopiodeleche.domain.repository.RecoleccionRepositorio
 
 /**
  * Recolecciones del acopiador, offline-first.
@@ -38,17 +39,17 @@ class RecoleccionRepository(
     private val db: AcopioDatabase? = null,
     private val ahora: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val nuevoUuid: () -> String = ::uuidAleatorio
-) {
+) : RecoleccionRepositorio {
     /** Evita enviar el mismo registro dos veces a la vez (registro inmediato y sincronización). */
     private val mutexEnvio = Mutex()
 
     /** Recolecciones visibles para el usuario actual (Laravel aplica el filtro por rol). */
-    suspend fun listar(recibido: Boolean? = null, desde: String? = null): ApiResult<List<RegistroAcopio>> =
+    override suspend fun listar(recibido: Boolean?, desde: String?): ApiResult<List<RegistroAcopio>> =
         obtenerTodasLasPaginas { pagina -> api.listar(pagina = pagina, desde = desde, recibido = recibido) }
             .map { lista -> lista.map { it.toDomain() } }
 
     /** Recolecciones del usuario actual que aún no están en el servidor (pendientes o rechazadas). */
-    fun pendientes(): Flow<List<RegistroAcopio>> {
+    override fun pendientes(): Flow<List<RegistroAcopio>> {
         val db = db ?: return flowOf(emptyList())
         val usuario = SesionActual.usuario ?: return flowOf(emptyList())
         return db.recoleccionPendienteQueries.deUsuario(usuario.id)
@@ -64,13 +65,13 @@ class RecoleccionRepository(
      * @return el registro del servidor, o el registro local con [EstadoSync.PENDIENTE] si no hubo
      * conexión. Si el servidor rechaza los datos se devuelve el error y no se guarda nada.
      */
-    suspend fun registrar(
+    override suspend fun registrar(
         idProductor: String,
         litros: Double,
         observacion: String?,
-        idParada: String? = null,
-        nombreProductor: String? = null,
-        zona: String? = null
+        idParada: String?,
+        nombreProductor: String?,
+        zona: String?
     ): ApiResult<RegistroAcopio> {
         val productor = idNumerico(idProductor) ?: return ERROR_ID_INVALIDO
         val db = db ?: return api.registrar(
@@ -125,7 +126,7 @@ class RecoleccionRepository(
      * Se detiene al primer problema de conexión; las rechazadas quedan como [EstadoSync.ERROR].
      * @return cuántas se enviaron.
      */
-    suspend fun enviarPendientes(): Int {
+    override suspend fun enviarPendientes(): Int {
         val db = db ?: return 0
         val usuario = SesionActual.usuario ?: return 0
         return mutexEnvio.withLock {
@@ -152,16 +153,16 @@ class RecoleccionRepository(
     }
 
     /** Vuelve a poner en cola una recolección rechazada (p. ej. después de que el admin corrigió la asignación). */
-    fun reintentar(registro: RegistroAcopio) {
+    override fun reintentar(registro: RegistroAcopio) {
         registro.clientUuid?.let { db?.recoleccionPendienteQueries?.reintentar(it) }
     }
 
     /** Descarta una recolección que solo existe en el dispositivo. */
-    fun descartar(registro: RegistroAcopio) {
+    override fun descartar(registro: RegistroAcopio) {
         registro.clientUuid?.let { db?.recoleccionPendienteQueries?.eliminar(it) }
     }
 
-    suspend fun registrarRecepcion(registro: RegistroAcopio): ApiResult<RegistroAcopio> {
+    override suspend fun registrarRecepcion(registro: RegistroAcopio): ApiResult<RegistroAcopio> {
         val id = idNumerico(registro.id) ?: return ERROR_ID_INVALIDO
         return api.registrarRecepcion(id).map { it.toDomain() }
     }

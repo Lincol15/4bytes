@@ -1,8 +1,7 @@
 package com.example.acopiodeleche.data.sync
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.EstadoConexion
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.domain.model.Rol
 import com.example.acopiodeleche.domain.model.SesionActual
 import kotlinx.coroutines.coroutineScope
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import com.example.acopiodeleche.domain.repository.RecoleccionRepositorio
 
 /** Consulta que se hace por adelantado para que la pantalla tenga datos aunque se abra sin conexión. */
 typealias Precarga = suspend () -> ApiResult<*>
@@ -25,7 +25,7 @@ typealias Precarga = suspend () -> ApiResult<*>
  * 2. descarga los datos del rol (precargas) para llenar la base local.
  */
 class Sincronizador(
-    private val recolecciones: RecoleccionRepository,
+    private val recolecciones: RecoleccionRepositorio,
     private val conexion: EstadoConexion,
     private val precargasPorRol: (Rol) -> List<Precarga>
 ) {

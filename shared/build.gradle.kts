@@ -92,6 +92,10 @@ kotlin {
             implementation(libs.sqldelight.jvm)
             implementation(libs.ktor.client.okhttp)
         }
+        // Pruebas de Android en la JVM del equipo: SQLite en memoria con el driver JDBC
+        getByName("androidHostTest").dependencies {
+            implementation(libs.sqldelight.jvm)
+        }
     }
 }
 

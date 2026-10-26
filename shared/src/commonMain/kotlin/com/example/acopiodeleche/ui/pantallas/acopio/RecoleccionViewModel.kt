@@ -2,9 +2,14 @@ package com.example.acopiodeleche.ui.pantallas.acopio
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.remote.ApiResult
-import com.example.acopiodeleche.data.repository.ProductorRepository
-import com.example.acopiodeleche.data.repository.RecoleccionRepository
+import com.example.acopiodeleche.domain.ApiResult
+import com.example.acopiodeleche.domain.usecase.CombinarRecolecciones
+import com.example.acopiodeleche.domain.usecase.DescartarRecoleccion
+import com.example.acopiodeleche.domain.usecase.ObservarRecoleccionesPendientes
+import com.example.acopiodeleche.domain.usecase.ObtenerProductores
+import com.example.acopiodeleche.domain.usecase.ObtenerRecolecciones
+import com.example.acopiodeleche.domain.usecase.ReintentarRecoleccion
+import com.example.acopiodeleche.domain.usecase.RegistrarRecoleccion
 import com.example.acopiodeleche.data.sync.Sincronizador
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.RegistroAcopio
@@ -24,8 +29,13 @@ import kotlinx.coroutines.launch
  * las guardadas en el teléfono que aún no se envían) y sus productores asignados.
  */
 class RecoleccionViewModel(
-    private val recoleccionRepository: RecoleccionRepository,
-    private val productorRepository: ProductorRepository,
+    private val obtenerRecolecciones: ObtenerRecolecciones,
+    observarPendientes: ObservarRecoleccionesPendientes,
+    private val combinarRecolecciones: CombinarRecolecciones,
+    private val registrarRecoleccion: RegistrarRecoleccion,
+    private val reintentarRecoleccion: ReintentarRecoleccion,
+    private val descartarRecoleccion: DescartarRecoleccion,
+    private val obtenerProductores: ObtenerProductores,
     private val sincronizador: Sincronizador
 ) : ViewModel() {
 
@@ -33,13 +43,9 @@ class RecoleccionViewModel(
 
     /** Registros pendientes primero, luego los del servidor. */
     val registros: StateFlow<EstadoUi<List<RegistroAcopio>>> =
-        combine(_delServidor, recoleccionRepository.pendientes()) { servidor, locales ->
+        combine(_delServidor, observarPendientes()) { servidor, locales ->
             when (servidor) {
-                is EstadoUi.Exito -> {
-                    // Si un pendiente ya llegó al servidor (y la lista lo trae), no se muestra dos veces.
-                    val enServidor = servidor.datos.mapNotNull { it.clientUuid }.toSet()
-                    EstadoUi.Exito(locales.filter { it.clientUuid !in enServidor } + servidor.datos)
-                }
+                is EstadoUi.Exito -> EstadoUi.Exito(combinarRecolecciones(servidor.datos, locales))
                 // Sin conexión ni copia local: al menos se ven los registros del teléfono.
                 is EstadoUi.Error -> if (locales.isNotEmpty()) EstadoUi.Exito(locales) else servidor
                 EstadoUi.Cargando -> servidor
@@ -61,12 +67,12 @@ class RecoleccionViewModel(
     fun cargar() {
         _productores.value = EstadoUi.Cargando
         cargarRegistros()
-        viewModelScope.launch { _productores.value = productorRepository.listar().aEstadoUi() }
+        viewModelScope.launch { _productores.value = obtenerProductores().aEstadoUi() }
     }
 
     private fun cargarRegistros() {
         if (_delServidor.value !is EstadoUi.Exito) _delServidor.value = EstadoUi.Cargando
-        viewModelScope.launch { _delServidor.value = recoleccionRepository.listar().aEstadoUi() }
+        viewModelScope.launch { _delServidor.value = obtenerRecolecciones().aEstadoUi() }
     }
 
     /** Guarda la recolección en el teléfono y la envía; sin conexión queda pendiente. */
@@ -75,7 +81,7 @@ class RecoleccionViewModel(
         _envio.value = EstadoEnvio.Enviando
         val productor = (_productores.value as? EstadoUi.Exito)?.datos?.firstOrNull { it.idProductor == registro.idProductor }
         viewModelScope.launch {
-            val resultado = recoleccionRepository.registrar(
+            val resultado = registrarRecoleccion(
                 idProductor = registro.idProductor,
                 litros = registro.litros,
                 observacion = registro.observacion,
@@ -103,13 +109,13 @@ class RecoleccionViewModel(
 
     /** Vuelve a enviar una recolección que el servidor rechazó. */
     fun reintentar(registro: RegistroAcopio) {
-        recoleccionRepository.reintentar(registro)
+        reintentarRecoleccion(registro)
         viewModelScope.launch { sincronizador.sincronizar() }
     }
 
     /** Elimina del teléfono una recolección que no se pudo sincronizar. */
     fun descartar(registro: RegistroAcopio) {
-        recoleccionRepository.descartar(registro)
+        descartarRecoleccion(registro)
     }
 
     fun limpiarEnvio() {

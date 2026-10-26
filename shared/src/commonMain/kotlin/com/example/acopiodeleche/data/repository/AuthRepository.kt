@@ -1,6 +1,6 @@
 package com.example.acopiodeleche.data.repository
 
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.AuthApi
 import com.example.acopiodeleche.data.remote.dto.LoginRequestDto
 import com.example.acopiodeleche.data.remote.dto.aSesion

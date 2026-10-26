@@ -1,7 +1,7 @@
 package com.example.acopiodeleche.data
 
 import com.example.acopiodeleche.data.remote.ApiClient
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.AuthApi
 import com.example.acopiodeleche.data.remote.ProductorApi
 import com.example.acopiodeleche.data.remote.RecoleccionApi

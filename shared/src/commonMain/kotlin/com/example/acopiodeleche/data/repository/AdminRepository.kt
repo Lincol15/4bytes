@@ -1,14 +1,14 @@
 package com.example.acopiodeleche.data.repository
 
 import com.example.acopiodeleche.data.remote.AdminApi
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.dto.ActualizarAsignacionRequestDto
 import com.example.acopiodeleche.data.remote.dto.CrearUsuarioRequestDto
 import com.example.acopiodeleche.data.remote.dto.PublicarAvisoRequestDto
 import com.example.acopiodeleche.data.remote.dto.aApi
 import com.example.acopiodeleche.data.remote.dto.rolDesdeApi
 import com.example.acopiodeleche.data.remote.dto.toDomain
-import com.example.acopiodeleche.data.remote.map
+import com.example.acopiodeleche.domain.map
 import com.example.acopiodeleche.domain.model.AjustePlanta
 import com.example.acopiodeleche.domain.model.AsignacionAcopiador
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta

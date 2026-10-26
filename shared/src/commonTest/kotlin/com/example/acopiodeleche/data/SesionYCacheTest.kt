@@ -2,7 +2,7 @@ package com.example.acopiodeleche.data
 
 import com.example.acopiodeleche.data.local.CacheRespuestas
 import com.example.acopiodeleche.data.remote.ApiClient
-import com.example.acopiodeleche.data.remote.ApiResult
+import com.example.acopiodeleche.domain.ApiResult
 import com.example.acopiodeleche.data.remote.ProductorApi
 import com.example.acopiodeleche.data.remote.RecoleccionApi
 import com.example.acopiodeleche.data.repository.ProductorRepository
