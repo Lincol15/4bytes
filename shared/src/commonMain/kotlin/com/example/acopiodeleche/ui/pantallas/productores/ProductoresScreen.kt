@@ -39,8 +39,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.Productor
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 
 private val VerdeProductor = Color(0xFF1B5E20)
 private val VerdeClaro     = Color(0xFF2E7D32)
@@ -49,22 +55,28 @@ private val VerdeClaro     = Color(0xFF2E7D32)
 fun ProductoresScreen(
     soloLectura: Boolean = false,
     onVolver: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ProductoresViewModel = viewModel { ProductoresViewModel() }
 ) {
-    var productores       by remember { mutableStateOf(DatosMock.productores.toList()) }
+    // Padrón de productores leído desde Laravel (mismos datos que la web)
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val productores = estadoProductores.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
     var busqueda          by remember { mutableStateOf("") }
     var filtroComunidad   by remember { mutableStateOf("") }
     var filtroEstado      by remember { mutableStateOf("Todos") }
 
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
+
     if (mostrarFormulario) {
         FormularioProductor(
-            alGuardar = { nuevo ->
-                DatosMock.productores.add(nuevo)
-                productores = DatosMock.productores.toList()
-                mostrarFormulario = false
-            },
-            alCancelar = { mostrarFormulario = false }
+            alGuardar = { nuevo, correo, contrasena -> viewModel.registrar(nuevo, correo, contrasena) },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
         )
         return
     }
@@ -126,7 +138,7 @@ fun ProductoresScreen(
             }
             if (!soloLectura) {
                 Button(
-                    onClick = { mostrarFormulario = true },
+                    onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                     modifier = Modifier.align(Alignment.CenterEnd),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
@@ -196,10 +208,28 @@ fun ProductoresScreen(
             )
         }
 
+        when (val actual = envio) {
+            is EstadoEnvio.Exito -> Text(
+                actual.mensaje,
+                color = VerdeClaro,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            is EstadoEnvio.Error -> Text(
+                actual.mensaje,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            else -> Unit
+        }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
         // ── Lista ────────────────────────────────────────────────────────
-        if (productorosFiltrados.isEmpty()) {
+        if (estadoProductores !is EstadoUi.Exito) {
+            CargaOError(estadoProductores, onReintentar = viewModel::cargar)
+        } else if (productorosFiltrados.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🌾", fontSize = 48.sp)
@@ -213,7 +243,7 @@ fun ProductoresScreen(
                     if (!soloLectura && busqueda.isBlank()) {
                         Spacer(Modifier.height(8.dp))
                         Button(
-                            onClick = { mostrarFormulario = true },
+                            onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                             colors = ButtonDefaults.buttonColors(containerColor = VerdeClaro)
                         ) { Text("+ Registrar primer productor") }
                     }
@@ -229,13 +259,7 @@ fun ProductoresScreen(
                     TarjetaProductorMejorada(
                         productor = productor,
                         onToggleEstado = if (!soloLectura) {
-                            {
-                                val idx = DatosMock.productores.indexOfFirst { it.idProductor == productor.idProductor }
-                                if (idx != -1) {
-                                    DatosMock.productores[idx] = productor.copy(estado = !productor.estado)
-                                    productores = DatosMock.productores.toList()
-                                }
-                            }
+                            { viewModel.cambiarEstado(productor) }
                         } else null
                     )
                 }
@@ -253,10 +277,6 @@ private fun TarjetaProductorMejorada(
     productor: Productor,
     onToggleEstado: (() -> Unit)?
 ) {
-    val litrosTotal = DatosMock.registrosAcopio
-        .filter { it.idProductor == productor.idProductor }
-        .sumOf { it.litros }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp),
@@ -324,22 +344,6 @@ private fun TarjetaProductorMejorada(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                // Litros
-                if (litrosTotal > 0) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            "$litrosTotal L",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = VerdeClaro
-                        )
-                        Text(
-                            "acopiado",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
 

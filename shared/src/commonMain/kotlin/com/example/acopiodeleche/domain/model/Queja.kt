@@ -12,7 +12,8 @@ data class Queja(
     val hora: String,
     val estado: EstadoQueja = EstadoQueja.PENDIENTE,
     val respuesta: String? = null,
-    val fechaRespuesta: String? = null
+    val fechaRespuesta: String? = null,
+    val nombreProductor: String? = null // viene resuelto desde el backend
 )
 
 enum class EstadoQueja(val etiqueta: String, val icono: String) {

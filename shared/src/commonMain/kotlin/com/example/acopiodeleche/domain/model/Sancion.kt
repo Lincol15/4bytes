@@ -12,7 +12,8 @@ data class Sancion(
     val descripcion: String,
     val fecha: String,
     val idAdministrador: String,
-    val activa: Boolean = true
+    val activa: Boolean = true,
+    val nombreProductor: String? = null // viene resuelto desde el backend
 )
 
 enum class TipoSancion(val etiqueta: String, val icono: String, val color: String) {

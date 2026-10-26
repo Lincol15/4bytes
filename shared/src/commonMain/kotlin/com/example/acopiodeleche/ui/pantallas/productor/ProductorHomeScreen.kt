@@ -46,11 +46,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ControlCalidad
-import com.example.acopiodeleche.domain.model.DatosMock
 import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.ui.pantallas.productor.QuejasProductorScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.domain.model.Notificacion
+import com.example.acopiodeleche.domain.model.Productor
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import kotlinx.coroutines.launch
 
 private val VerdeHuata   = Color(0xFF2E7D32)
@@ -63,16 +69,25 @@ private data class ItemMenuProductor(val icono: String, val titulo: String, val 
 @Composable
 fun ProductorHomeScreen(
     onCerrarSesion: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ProductorViewModel = viewModel { ProductorViewModel() }
 ) {
     val usuario     = SesionActual.usuario
     val idProductor = usuario?.idProductor ?: ""
-    val productor   = DatosMock.productores.find { it.idProductor == idProductor }
+    // Datos del perfil tomados de la sesión (Laravel los devuelve al iniciar sesión)
+    val productor   = usuario?.let {
+        Productor(idProductor, it.nombres, it.apellidos, it.dni, it.telefono, "", it.comunidad.orEmpty(), it.estado)
+    }
 
-    val misEntregas        = DatosMock.registrosAcopio.filter { it.idProductor == idProductor }
-    val misPagos           = DatosMock.pagos.filter { it.idProductor == idProductor }
-    val misNotificaciones  = DatosMock.notificaciones
-    val misAnalisis        = DatosMock.analisisCalidad.filter { it.idProductor == idProductor }
+    // Laravel ya filtra por el productor autenticado
+    val estadoEntregas       by viewModel.entregas.collectAsStateWithLifecycle()
+    val estadoPagos          by viewModel.pagos.collectAsStateWithLifecycle()
+    val estadoAnalisis       by viewModel.analisis.collectAsStateWithLifecycle()
+    val estadoNotificaciones by viewModel.notificaciones.collectAsStateWithLifecycle()
+    val misEntregas        = estadoEntregas.datosOVacio()
+    val misPagos           = estadoPagos.datosOVacio()
+    val misNotificaciones  = estadoNotificaciones.datosOVacio()
+    val misAnalisis        = estadoAnalisis.datosOVacio()
     val noLeidas           = misNotificaciones.count { !it.leida }
     val pagosPendientes    = misPagos.count { it.estado == EstadoPago.PENDIENTE }
 
@@ -298,11 +313,18 @@ fun ProductorHomeScreen(
                         pagosPendientes  = pagosPendientes,
                         noLeidas         = noLeidas
                     )
-                    1 -> EntregasProductorTab(entregas = misEntregas)
-                    2 -> PagosProductorTab(pagos = misPagos)
-                    3 -> CalidadProductorTab(analisis = misAnalisis)
+                    1 -> if (estadoEntregas is EstadoUi.Exito) EntregasProductorTab(entregas = misEntregas)
+                         else CargaOError(estadoEntregas, onReintentar = viewModel::cargar)
+                    2 -> if (estadoPagos is EstadoUi.Exito) PagosProductorTab(pagos = misPagos)
+                         else CargaOError(estadoPagos, onReintentar = viewModel::cargar)
+                    3 -> if (estadoAnalisis is EstadoUi.Exito) CalidadProductorTab(analisis = misAnalisis)
+                         else CargaOError(estadoAnalisis, onReintentar = viewModel::cargar)
                     4 -> QuejasProductorScreen()
-                    5 -> NotificacionesTab(notificaciones = misNotificaciones)
+                    5 -> if (estadoNotificaciones is EstadoUi.Exito) {
+                             NotificacionesTab(notificaciones = misNotificaciones, onLeer = viewModel::marcarLeida)
+                         } else {
+                             CargaOError(estadoNotificaciones, onReintentar = viewModel::cargar)
+                         }
                 }
             }
         }
@@ -506,7 +528,7 @@ private fun EntregasProductorTab(entregas: List<com.example.acopiodeleche.domain
                 TarjetaKPI("📦", "${entregas.sumOf { it.litros }}L", "Litros totales", AzulHuata, Modifier.weight(1f))
             }
         }
-        items(entregas.reversed()) { entrega ->
+        items(entregas) { entrega ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
@@ -637,7 +659,7 @@ private fun CalidadProductorTab(analisis: List<ControlCalidad>) {
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(analisis.reversed()) { cal ->
+        items(analisis) { cal ->
             val colorR = when (cal.resultado) {
                 ResultadoCalidad.APTO      -> VerdeHuata
                 ResultadoCalidad.NO_APTO   -> Color.Red
@@ -683,7 +705,7 @@ private fun ParamChip(label: String, valor: String) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NotificacionesTab(notificaciones: List<com.example.acopiodeleche.domain.model.Notificacion>) {
+private fun NotificacionesTab(notificaciones: List<Notificacion>, onLeer: (Notificacion) -> Unit) {
     if (notificaciones.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -697,7 +719,7 @@ private fun NotificacionesTab(notificaciones: List<com.example.acopiodeleche.dom
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items(notificaciones) { notif ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable { onLeer(notif) },
                 shape = RoundedCornerShape(14.dp),
                 elevation = CardDefaults.cardElevation(if (!notif.leida) 3.dp else 1.dp),
                 colors = CardDefaults.cardColors(

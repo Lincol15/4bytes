@@ -34,11 +34,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 import com.example.acopiodeleche.domain.model.SesionActual
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.estado.fechaHoyPantalla
 import com.example.acopiodeleche.ui.pantallas.acopio.AcopioScreen
-import com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen
+import com.example.acopiodeleche.ui.pantallas.acopio.RecoleccionViewModel
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulHuata  = Color(0xFF1565C0)
@@ -50,17 +55,21 @@ fun AcopiadorHomeScreen(
 ) {
     val usuario = SesionActual.usuario
     var pantallaActual by remember { mutableStateOf(0) }
-    // 0=inicio, 1=registrar, 2=mis productores, 3=historial jornada
+    // 0=inicio, 1=registrar, 2=mis productores, 3=historial jornada, 4=mis rutas
+
+    // Recolecciones y productores del acopiador, leídos desde Laravel (compartidos por las subpantallas)
+    val recoleccionViewModel: RecoleccionViewModel = viewModel { RecoleccionViewModel() }
+    val estadoRegistros by recoleccionViewModel.registros.collectAsStateWithLifecycle()
 
     when (pantallaActual) {
-        1 -> AcopioScreen(onVolver = { pantallaActual = 0 })
-        2 -> MisProductoresScreen(onVolver = { pantallaActual = 0 })
-        3 -> HistorialJornadaScreen(onVolver = { pantallaActual = 0 })
+        1 -> AcopioScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
+        2 -> MisProductoresScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
+        3 -> HistorialJornadaScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
+        4 -> RutasAcopiadorScreen(onVolver = { pantallaActual = 0 })
         else -> {
-            // Registros SOLO de este acopiador
-            val misRegistros = DatosMock.registrosAcopio.filter { r ->
-                r.acopiador == usuario?.nombreCompleto
-            }
+            // El backend ya devuelve SOLO las recolecciones de este acopiador; aquí se toman las de hoy
+            val hoy = fechaHoyPantalla()
+            val misRegistros = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
             val litrosTotales = misRegistros.sumOf { it.litros }
 
             Column(modifier = modifier.fillMaxSize()) {
@@ -157,6 +166,14 @@ fun AcopiadorHomeScreen(
                             color       = Color(0xFF6A1B9A)
                         ) { pantallaActual = 3 }
                     }
+                    item {
+                        MenuItemAcopiador(
+                            icono       = "🗺️",
+                            titulo      = "Mis rutas",
+                            descripcion = "Rutas asignadas y estado de cada parada",
+                            color       = Color(0xFFE65100)
+                        ) { pantallaActual = 4 }
+                    }
                     // ── Últimas 3 entregas ───────────────────────────────
                     item {
                         Spacer(Modifier.height(4.dp))
@@ -167,7 +184,15 @@ fun AcopiadorHomeScreen(
                         )
                     }
 
-                    if (misRegistros.isEmpty()) {
+                    if (estadoRegistros !is EstadoUi.Exito) {
+                        item {
+                            CargaOError(
+                                estadoRegistros,
+                                onReintentar = recoleccionViewModel::cargar,
+                                modifier = Modifier.height(160.dp)
+                            )
+                        }
+                    } else if (misRegistros.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -192,7 +217,7 @@ fun AcopiadorHomeScreen(
                             }
                         }
                     } else {
-                        items(misRegistros.takeLast(3).reversed()) { registro ->
+                        items(misRegistros.take(3)) { registro ->
                             TarjetaRegistroMini(registro)
                         }
                     }
@@ -207,18 +232,14 @@ fun AcopiadorHomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun MisProductoresScreen(onVolver: () -> Unit) {
+fun MisProductoresScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel) {
     val usuario     = SesionActual.usuario
-    val asignacion  = DatosMock.asignaciones.find { it.idAcopiador == usuario?.id }
-    val misProductores = if (asignacion != null) {
-        DatosMock.productores.filter { p ->
-            asignacion.idsProductores.contains(p.idProductor)
-        }
-    } else {
-        DatosMock.productores.filter { p ->
-            p.comunidad == usuario?.comunidad
-        }
-    }
+    // Laravel resuelve la asignación (individual o por comunidad) del acopiador
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val estadoRegistros by viewModel.registros.collectAsStateWithLifecycle()
+    val misProductores = estadoProductores.datosOVacio()
+    val hoy = fechaHoyPantalla()
+    val registrosHoy = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Encabezado
@@ -249,7 +270,9 @@ fun MisProductoresScreen(onVolver: () -> Unit) {
             }
         }
 
-        if (misProductores.isEmpty()) {
+        if (estadoProductores !is EstadoUi.Exito) {
+            CargaOError(estadoProductores, onReintentar = viewModel::cargar)
+        } else if (misProductores.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("👥", fontSize = 48.sp)
@@ -269,11 +292,8 @@ fun MisProductoresScreen(onVolver: () -> Unit) {
             ) {
                 items(misProductores) { p ->
                     // Cuántos litros registró este productor hoy con este acopiador
-                    val litrosProductor = DatosMock.registrosAcopio
-                        .filter { r ->
-                            r.idProductor == p.idProductor &&
-                            r.acopiador == SesionActual.usuario?.nombreCompleto
-                        }
+                    val litrosProductor = registrosHoy
+                        .filter { r -> r.idProductor == p.idProductor }
                         .sumOf { it.litros }
 
                     Card(
@@ -339,11 +359,10 @@ fun MisProductoresScreen(onVolver: () -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun HistorialJornadaScreen(onVolver: () -> Unit) {
-    val usuario   = SesionActual.usuario
-    val registros = DatosMock.registrosAcopio.filter { r ->
-        r.acopiador == usuario?.nombreCompleto
-    }
+fun HistorialJornadaScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel) {
+    val estadoRegistros by viewModel.registros.collectAsStateWithLifecycle()
+    val hoy = fechaHoyPantalla()
+    val registros = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
     val litrosTotales = registros.sumOf { it.litros }
     val recibidos     = registros.count { it.recibido }
 
@@ -374,6 +393,11 @@ fun HistorialJornadaScreen(onVolver: () -> Unit) {
                     )
                 }
             }
+        }
+
+        if (estadoRegistros !is EstadoUi.Exito) {
+            CargaOError(estadoRegistros, onReintentar = viewModel::cargar)
+            return
         }
 
         if (registros.isEmpty()) {
@@ -421,7 +445,7 @@ fun HistorialJornadaScreen(onVolver: () -> Unit) {
                 )
             }
 
-            items(registros.reversed()) { registro ->
+            items(registros) { registro ->
                 TarjetaRegistroDetalle(registro)
             }
         }
@@ -434,7 +458,6 @@ fun HistorialJornadaScreen(onVolver: () -> Unit) {
 
 @Composable
 private fun TarjetaRegistroMini(registro: RegistroAcopio) {
-    val productor = DatosMock.productores.find { it.idProductor == registro.idProductor }
     Card(
         modifier  = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -447,7 +470,7 @@ private fun TarjetaRegistroMini(registro: RegistroAcopio) {
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    productor?.nombreCompleto ?: "Productor",
+                    registro.nombreProductor ?: "Productor",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -469,7 +492,6 @@ private fun TarjetaRegistroMini(registro: RegistroAcopio) {
 
 @Composable
 private fun TarjetaRegistroDetalle(registro: RegistroAcopio) {
-    val productor = DatosMock.productores.find { it.idProductor == registro.idProductor }
     val colorEstado = if (registro.recibido) VerdeHuata else Color(0xFFE65100)
 
     Card(
@@ -487,7 +509,7 @@ private fun TarjetaRegistroDetalle(registro: RegistroAcopio) {
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(
-                            productor?.nombreCompleto ?: "Productor",
+                            registro.nombreProductor ?: "Productor",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )

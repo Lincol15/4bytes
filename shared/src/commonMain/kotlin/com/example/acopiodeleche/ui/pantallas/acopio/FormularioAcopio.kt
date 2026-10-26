@@ -38,21 +38,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.ui.components.FechaData
 import com.example.acopiodeleche.ui.components.HoraData
-import kotlin.random.Random
 
 private val VerdeHuata = Color(0xFF2E7D32)
 
 @Composable
 fun FormularioAcopio(
+    productores: List<Productor>,
     alGuardar: (RegistroAcopio) -> Unit,
     alCancelar: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enviando: Boolean = false
 ) {
     // ── Datos automáticos desde la sesión ────────────────────────────────
     val usuarioActual = SesionActual.usuario
@@ -60,19 +60,8 @@ fun FormularioAcopio(
     val vehiculoAcopiador = usuarioActual?.vehiculo ?: "Sin vehículo asignado"
     val comunidadAcopiador = usuarioActual?.comunidad
 
-    // Productores asignados a este acopiador (desde asignaciones del admin)
-    val asignacion = DatosMock.asignaciones
-        .find { it.idAcopiador == usuarioActual?.id }
-    val productoresAsignados: List<Productor> = if (asignacion != null) {
-        DatosMock.productores.filter { p ->
-            p.estado && asignacion.idsProductores.contains(p.idProductor)
-        }
-    } else {
-        // fallback: todos de su comunidad
-        DatosMock.productores.filter { p ->
-            p.estado && (comunidadAcopiador == null || p.comunidad == comunidadAcopiador)
-        }
-    }
+    // Productores asignados a este acopiador (Laravel ya aplica la asignación del admin)
+    val productoresAsignados: List<Productor> = productores.filter { it.estado }
 
     // ── Estado del formulario ────────────────────────────────────────────
     var busqueda                by remember { mutableStateOf("") }
@@ -497,7 +486,7 @@ fun FormularioAcopio(
                         val horaAhora = HoraData.ahora().formateada()
                         alGuardar(
                             RegistroAcopio(
-                                id          = "a-${Random.nextInt(1000, 9999)}",
+                                id          = "",   // lo asigna el backend al guardar
                                 idProductor = productorSeleccionado!!.idProductor,
                                 acopiador   = nombreAcopiador,
                                 vehiculo    = vehiculoAcopiador,
@@ -510,7 +499,7 @@ fun FormularioAcopio(
                             )
                         )
                     },
-                    enabled = formularioValido,
+                    enabled = formularioValido && !enviando,
                     modifier = Modifier
                         .weight(1f)
                         .height(52.dp),
@@ -533,7 +522,7 @@ fun FormularioAcopio(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "Guardar Acopio",
+                            if (enviando) "Guardando..." else "Guardar Acopio",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold
                         )

@@ -14,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,13 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.acopiodeleche.domain.model.Productor
-import kotlin.random.Random
 
 @Composable
 fun FormularioProductor(
-    alGuardar: (Productor) -> Unit,
+    alGuardar: (productor: Productor, correo: String, contrasena: String) -> Unit,
     alCancelar: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enviando: Boolean = false,
+    mensajeError: String? = null
 ) {
     // --- Estado por campo ---
     var nombres      by remember { mutableStateOf("") }
@@ -39,6 +43,8 @@ fun FormularioProductor(
     var telefono     by remember { mutableStateOf("") }
     var direccion    by remember { mutableStateOf("") }
     var comunidad    by remember { mutableStateOf("") }
+    var correo       by remember { mutableStateOf("") }
+    var contrasena   by remember { mutableStateOf("") }
     var estado       by remember { mutableStateOf(true) }
 
     // --- Validaciones derivadas (val, no var) ---
@@ -47,8 +53,13 @@ fun FormularioProductor(
     val dniVacio       = dni.isBlank()
     val dniInvalido    = dni.isNotBlank() && dni.length != 8
     val comunidadVacia = comunidad.isBlank()
+    // Laravel crea la cuenta del productor: exige teléfono de 9 dígitos, correo y contraseña (mín. 6)
+    val telefonoInvalido   = telefono.length != 9
+    val correoInvalido     = correo.isNotBlank() && !correo.contains("@")
+    val contrasenaInvalida = contrasena.isNotEmpty() && contrasena.length < 6
     val formularioValido = !nombresVacio && !apellidosVacio && !dniVacio
-                          && !dniInvalido && !comunidadVacia
+                          && !dniInvalido && !comunidadVacia && !telefonoInvalido
+                          && correo.isNotBlank() && !correoInvalido && contrasena.length >= 6
 
     Column(
         modifier = modifier
@@ -100,7 +111,9 @@ fun FormularioProductor(
         OutlinedTextField(
             value = telefono,
             onValueChange = { if (it.length <= 9) telefono = it.filter { c -> c.isDigit() } },
-            label = { Text("Teléfono") },
+            label = { Text("Teléfono *") },
+            isError = telefono.isNotEmpty() && telefonoInvalido,
+            supportingText = { if (telefono.isNotEmpty() && telefonoInvalido) Text("El teléfono debe tener 9 dígitos") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -122,6 +135,37 @@ fun FormularioProductor(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+
+        OutlinedTextField(
+            value = correo,
+            onValueChange = { correo = it.trim() },
+            label = { Text("Correo (acceso del productor) *") },
+            isError = correoInvalido,
+            supportingText = { if (correoInvalido) Text("Correo inválido") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = contrasena,
+            onValueChange = { contrasena = it },
+            label = { Text("Contraseña inicial *") },
+            isError = contrasenaInvalida,
+            supportingText = { if (contrasenaInvalida) Text("Mínimo 6 caracteres") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (mensajeError != null) {
+            Text(
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
 
         // Switch de estado
         Row(
@@ -148,7 +192,7 @@ fun FormularioProductor(
                 onClick = {
                     alGuardar(
                         Productor(
-                            idProductor = "p-${Random.nextInt(1000, 9999)}",
+                            idProductor = "",   // lo asigna el backend
                             nombres     = nombres.trim(),
                             apellidos   = apellidos.trim(),
                             dni         = dni.trim(),
@@ -156,12 +200,14 @@ fun FormularioProductor(
                             direccion   = direccion.trim(),
                             comunidad   = comunidad.trim(),
                             estado      = estado
-                        )
+                        ),
+                        correo,
+                        contrasena
                     )
                 },
-                enabled = formularioValido,
+                enabled = formularioValido && !enviando,
                 modifier = Modifier.weight(1f)
-            ) { Text("Guardar") }
+            ) { Text(if (enviando) "Guardando..." else "Guardar") }
         }
     }
 }

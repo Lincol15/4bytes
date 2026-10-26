@@ -30,7 +30,8 @@ data class ControlCalidad(
     val observacion: String? = null,
     val imagenTicket: String? = null,   // ruta de la imagen guardada
     val origenDatos: OrigenDatos = OrigenDatos.MANUAL,
-    val idUsuarioAnalisis: String = ""  // quién realizó el análisis
+    val idUsuarioAnalisis: String = "", // quién realizó el análisis
+    val nombreProductor: String? = null // viene resuelto desde el backend
 )
 
 enum class ResultadoCalidad(val etiqueta: String, val color: String) {

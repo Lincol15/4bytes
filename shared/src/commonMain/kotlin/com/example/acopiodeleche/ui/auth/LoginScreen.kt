@@ -40,9 +40,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.Usuario
-import com.example.acopiodeleche.domain.service.AuthService
 
 private val VerdeHuata   = Color(0xFF2E7D32)
 private val AzulHuata    = Color(0xFF1565C0)
@@ -51,15 +52,21 @@ private val AmarilloHuata = Color(0xFFF9A825)
 @Composable
 fun LoginScreen(
     onLoginExitoso: (Usuario) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: LoginViewModel = viewModel { LoginViewModel() }
 ) {
-    val authService = remember { AuthService(DatosMock.usuarios) }
+    val estado by viewModel.estado.collectAsStateWithLifecycle()
 
     var correo            by remember { mutableStateOf("") }
     var contrasena        by remember { mutableStateOf("") }
     var mostrarContrasena by remember { mutableStateOf(false) }
-    var errorMensaje      by remember { mutableStateOf("") }
-    var cargando          by remember { mutableStateOf(false) }
+    val errorMensaje      = estado.error.orEmpty()
+    val cargando          = estado.cargando
+
+    // Credenciales validadas por Laravel: se entra con el usuario devuelto por la API.
+    LaunchedEffect(estado.usuario) {
+        estado.usuario?.let(onLoginExitoso)
+    }
 
     val formularioValido = correo.isNotBlank() && contrasena.isNotBlank()
 
@@ -123,8 +130,8 @@ fun LoginScreen(
 
                     OutlinedTextField(
                         value = correo,
-                        onValueChange = { correo = it; errorMensaje = "" },
-                        label = { Text("Correo electrónico") },
+                        onValueChange = { correo = it; viewModel.limpiarError() },
+                        label = { Text("Correo electrónico o DNI") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         isError = errorMensaje.isNotEmpty(),
@@ -137,7 +144,7 @@ fun LoginScreen(
 
                     OutlinedTextField(
                         value = contrasena,
-                        onValueChange = { contrasena = it; errorMensaje = "" },
+                        onValueChange = { contrasena = it; viewModel.limpiarError() },
                         label = { Text("Contraseña") },
                         singleLine = true,
                         visualTransformation = if (mostrarContrasena)
@@ -165,14 +172,7 @@ fun LoginScreen(
                     }
 
                     Button(
-                        onClick = {
-                            cargando = true
-                            errorMensaje = ""
-                            val usuario = authService.login(correo.trim(), contrasena)
-                            cargando = false
-                            if (usuario != null) onLoginExitoso(usuario)
-                            else errorMensaje = "Correo o contraseña incorrectos."
-                        },
+                        onClick = { viewModel.iniciarSesion(correo, contrasena) },
                         enabled = formularioValido && !cargando,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(12.dp),

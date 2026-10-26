@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.acopiodeleche.domain.model.DatosMock
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 
 @Composable
@@ -27,10 +26,8 @@ fun TarjetaAcopio(
     registro: RegistroAcopio,
     modifier: Modifier = Modifier
 ) {
-    // Resuelve el nombre del productor por ID
-    val nombreProductor = DatosMock.productores
-        .find { it.idProductor == registro.idProductor }
-        ?.nombreCompleto ?: "Productor desconocido"
+    // El backend devuelve el nombre del productor junto con el registro
+    val nombreProductor = registro.nombreProductor ?: "Productor desconocido"
 
     Card(
         modifier = modifier.fillMaxWidth(),

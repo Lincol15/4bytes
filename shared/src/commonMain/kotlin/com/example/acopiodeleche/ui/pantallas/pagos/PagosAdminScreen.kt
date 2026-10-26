@@ -47,12 +47,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.domain.model.PagoAcopiador
+import com.example.acopiodeleche.domain.model.VistaPreviaPago
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.Pago
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.RegistroAcopio
-import kotlin.random.Random
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulPago   = Color(0xFF1565C0)
@@ -60,12 +66,11 @@ private val AzulPago   = Color(0xFF1565C0)
 /**
  * Pantalla de Pagos para el Administrador.
  *
- * FLUJO CORRECTO:
- * 1. El acopiador registra litros diariamente → se guarda en DatosMock.registrosAcopio
- * 2. El admin ve en tiempo real los litros acumulados por productor
- * 3. Al fin de semana (viernes), el admin genera el pago con un solo clic
- *    → el sistema calcula: litrosTotales × precioPorLitro
- * 4. El productor ve el pago en su app
+ * FLUJO:
+ * 1. El acopiador registra litros diariamente → se guardan en Laravel
+ * 2. El admin ve la liquidación de la semana calculada por el backend (PaymentService)
+ * 3. Genera el pago con un clic; Laravel lo guarda con bonos y descuentos
+ * 4. El productor ve el pago en su app y en la web
  */
 @Composable
 fun PagosAdminScreen(
@@ -74,6 +79,8 @@ fun PagosAdminScreen(
 ) {
     var tabActual by remember { mutableStateOf(0) }
     val tabs = listOf("Resumen litros", "Pagos generados", "Acopiadores")
+    val viewModel: PagosAdminViewModel = viewModel { PagosAdminViewModel() }
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -110,187 +117,108 @@ fun PagosAdminScreen(
             }
         }
 
+        when (val actual = envio) {
+            is EstadoEnvio.Exito -> MensajePago(actual.mensaje, VerdeHuata, viewModel::limpiarEnvio)
+            is EstadoEnvio.Error -> MensajePago(actual.mensaje, Color(0xFFC62828), viewModel::limpiarEnvio)
+            else -> Unit
+        }
+
         when (tabActual) {
-            0 -> ResumenLitrosTab()
-            1 -> PagosGeneradosTab()
-            2 -> PagosAcopiadoresTab()
+            0 -> ResumenLitrosTab(viewModel)
+            1 -> PagosGeneradosTab(viewModel)
+            2 -> PagosAcopiadoresTab(viewModel)
         }
     }
 }
 
-// ── TAB 1: RESUMEN DE LITROS (auto-calculado desde registros del acopiador) ──
+// ── TAB 1: RESUMEN DE LITROS (liquidación de la semana calculada por Laravel) ──
 
 @Composable
-private fun ResumenLitrosTab() {
-    val registros = DatosMock.registrosAcopio
-    val productores = DatosMock.productores.filter { it.estado }
-    val precio = ConfiguracionPlanta.precioPorLitro
-
-    // Agrupar registros por productor
-    val litrosPorProductor = registros
-        .groupBy { it.idProductor }
-        .mapValues { (_, regs) -> regs.sumOf { it.litros } }
-
-    val totalGeneral = litrosPorProductor.values.sumOf { it }
+private fun ResumenLitrosTab(viewModel: PagosAdminViewModel) {
+    val estado by viewModel.vistaPrevia.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val filas = estado.datosOVacio()
+    val conEntregas = filas.filter { it.puedeGenerar }
+    val totalLitros = conEntregas.sumOf { it.litros }
+    val totalPagar = conEntregas.sumOf { it.total }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            // Resumen general
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("📊 Resumen acumulado", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("📊 Semana ${fechaCorta(viewModel.inicioSemana)} — ${fechaCorta(viewModel.finSemana)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Total litros recolectados:", style = MaterialTheme.typography.bodyMedium)
-                        Text("$totalGeneral L", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text("$totalLitros L", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total a pagar (${productores.size} productores):", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "S/ ${(totalGeneral * precio).let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = VerdeHuata
-                        )
+                        Text("Total a pagar (${conEntregas.size} productores):", style = MaterialTheme.typography.bodyMedium)
+                        Text(soles(totalPagar), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = VerdeHuata)
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Registros de acopio:", style = MaterialTheme.typography.bodySmall)
-                        Text("${registros.size}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                    }
+                    Text("Incluye bonos y descuentos calculados por el servidor", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
         item {
-            Text(
-                "Litros por productor (desde registros del acopiador)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Liquidación por productor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         }
 
-        if (productores.isEmpty() || litrosPorProductor.isEmpty()) {
+        if (conEntregas.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    Text("No hay registros de acopio aún", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No hay entregas registradas esta semana", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
-            items(productores) { productor ->
-                val litros = litrosPorProductor[productor.idProductor] ?: 0.0
-                val totalProductor = litros * precio
-                val regsProductor = registros.filter { it.idProductor == productor.idProductor }
-                var yaGenerado by remember {
-                    mutableStateOf(DatosMock.pagos.any { it.idProductor == productor.idProductor })
+            items(conEntregas, key = { it.idProductor }) { fila ->
+                TarjetaVistaPrevia(fila, enviando = envio == EstadoEnvio.Enviando) { viewModel.generarPago(fila) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaVistaPrevia(fila: VistaPreviaPago, enviando: Boolean, onGenerar: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(fila.nombreProductor, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(fila.comunidad, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Precio: S/ ${fila.precioPorLitro}/L", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-
-                Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        // Encabezado productor
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(productor.nombreCompleto, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text(productor.comunidad, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${regsProductor.size} entregas registradas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    "$litros L",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = VerdeHuata
-                                )
-                                Text(
-                                    "S/ ${totalProductor.let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AzulPago
-                                )
-                            }
-                        }
-
-                        // Detalle por entrega
-                        if (regsProductor.isNotEmpty()) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-                            regsProductor.forEach { reg ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        "${reg.fecha} ${reg.hora}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        reg.litrosFormateados,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-
-                        // Botón generar pago
-                        Spacer(Modifier.height(8.dp))
-                        if (litros > 0) {
-                            if (yaGenerado) {
-                                Text(
-                                    "✅ Pago ya generado para este productor",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = VerdeHuata
-                                )
-                            } else {
-                                Button(
-                                    onClick = {
-                                        // Generar pago automáticamente desde los registros
-                                        val detalle = regsProductor.associate { reg ->
-                                            "${reg.fecha} ${reg.hora}" to reg.litros
-                                        }
-                                        DatosMock.pagos.add(
-                                            Pago(
-                                                id = "pago-${Random.nextInt(1000, 9999)}",
-                                                idProductor = productor.idProductor,
-                                                codigoPago = "H-${Random.nextInt(10, 99)}",
-                                                periodoDesde = regsProductor.minByOrNull { it.fecha }?.fecha ?: "",
-                                                periodoHasta = regsProductor.maxByOrNull { it.fecha }?.fecha ?: "",
-                                                precioPorLitro = precio,
-                                                litrosTotales = litros,
-                                                detalleDiario = detalle,
-                                                estado = EstadoPago.PENDIENTE
-                                            )
-                                        )
-                                        yaGenerado = true
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
-                                ) {
-                                    Text(
-                                        "Generar pago: S/ ${totalProductor.let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        } else {
-                            Text(
-                                "Sin entregas registradas esta semana",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${fila.litros} L", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = VerdeHuata)
+                    Text(soles(fila.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AzulPago)
                 }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (fila.yaGenerado) {
+                Text("✅ Pago ya generado para esta semana", style = MaterialTheme.typography.bodySmall, color = VerdeHuata)
+            } else {
+                Button(
+                    onClick = onGenerar,
+                    enabled = !enviando,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
+                ) { Text("Generar pago: ${soles(fila.total)}", fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -299,10 +227,14 @@ private fun ResumenLitrosTab() {
 // ── TAB 2: PAGOS GENERADOS ────────────────────────────────────────────────
 
 @Composable
-private fun PagosGeneradosTab() {
-    var pagos by remember { mutableStateOf(DatosMock.pagos.toList()) }
-    val precio = ConfiguracionPlanta.precioPorLitro
-
+private fun PagosGeneradosTab(viewModel: PagosAdminViewModel) {
+    val estado by viewModel.pagos.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val pagos = estado.datosOVacio()
     val pendientes = pagos.count { it.estado == EstadoPago.PENDIENTE }
     val totalPendiente = pagos.filter { it.estado == EstadoPago.PENDIENTE }.sumOf { it.totalCalculado }
 
@@ -313,13 +245,7 @@ private fun PagosGeneradosTab() {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TarjetaResumenPago("⏳", "$pendientes", "Pendientes", Color(0xFFE65100), Modifier.weight(1f))
-                TarjetaResumenPago(
-                    "💰",
-                    "S/ ${totalPendiente.let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                    "Por pagar",
-                    VerdeHuata,
-                    Modifier.weight(1f)
-                )
+                TarjetaResumenPago("💰", soles(totalPendiente), "Por pagar", VerdeHuata, Modifier.weight(1f))
             }
         }
 
@@ -335,16 +261,11 @@ private fun PagosGeneradosTab() {
                 }
             }
         } else {
-            items(pagos) { pago ->
+            items(pagos, key = { it.id }) { pago ->
                 TarjetaPagoProductor(
                     pago = pago,
-                    onMarcarPagado = {
-                        val idx = DatosMock.pagos.indexOfFirst { it.id == pago.id }
-                        if (idx != -1) {
-                            DatosMock.pagos[idx] = pago.copy(estado = EstadoPago.PAGADO, fechaPago = "Hoy")
-                            pagos = DatosMock.pagos.toList()
-                        }
-                    }
+                    enviando = envio == EstadoEnvio.Enviando,
+                    onMarcarPagado = { viewModel.marcarPagado(pago) }
                 )
             }
         }
@@ -367,8 +288,7 @@ private fun TarjetaResumenPago(icono: String, valor: String, etiqueta: String, c
 }
 
 @Composable
-private fun TarjetaPagoProductor(pago: Pago, onMarcarPagado: () -> Unit) {
-    val productor = DatosMock.productores.find { it.idProductor == pago.idProductor }
+private fun TarjetaPagoProductor(pago: Pago, enviando: Boolean, onMarcarPagado: () -> Unit) {
     val colorEstado = when (pago.estado) {
         EstadoPago.PAGADO    -> VerdeHuata
         EstadoPago.PENDIENTE -> Color(0xFFE65100)
@@ -377,14 +297,13 @@ private fun TarjetaPagoProductor(pago: Pago, onMarcarPagado: () -> Unit) {
 
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(productor?.nombreCompleto ?: "Productor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(pago.nombreProductor ?: "Productor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("Código: ${pago.codigoPago}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (pago.periodoDesde.isNotBlank()) {
                         Text("Periodo: ${pago.periodoDesde} — ${pago.periodoHasta}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -401,12 +320,11 @@ private fun TarjetaPagoProductor(pago: Pago, onMarcarPagado: () -> Unit) {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // Detalle de entregas
             if (pago.detalleDiario.isNotEmpty()) {
                 Text("Detalle de entregas:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                pago.detalleDiario.entries.take(5).forEach { (fecha, litrosDia) ->
+                pago.detalleDiario.entries.take(5).forEach { (dia, litrosDia) ->
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(fecha, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(dia, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("$litrosDia L", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -428,18 +346,14 @@ private fun TarjetaPagoProductor(pago: Pago, onMarcarPagado: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("TOTAL A PAGAR:", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(
-                    "S/ ${pago.totalCalculado.let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = VerdeHuata
-                )
+                Text(soles(pago.totalCalculado), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = VerdeHuata)
             }
 
             if (pago.estado == EstadoPago.PENDIENTE) {
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = onMarcarPagado,
+                    enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
                 ) { Text("✅ Marcar como PAGADO") }
@@ -451,24 +365,17 @@ private fun TarjetaPagoProductor(pago: Pago, onMarcarPagado: () -> Unit) {
     }
 }
 
-// ── TAB 3: PAGOS A ACOPIADORES ────────────────────────────────────────────
+// ── TAB 3: SUELDOS DE ACOPIADORES (planilla mensual del backend) ──────────
 
 @Composable
-private fun PagosAcopiadoresTab() {
-    val registros = DatosMock.registrosAcopio
-    val tarifaAcopiador = 0.20
-
-    val acopiadoresConRegistros = registros
-        .groupBy { it.acopiador }
-        .map { (nombre, regs) -> Triple(nombre, regs.sumOf { it.litros }, regs.size) }
-        .sortedByDescending { it.second }
-
-    if (acopiadoresConRegistros.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No hay registros de acopio", style = MaterialTheme.typography.bodyLarge)
-        }
+private fun PagosAcopiadoresTab(viewModel: PagosAdminViewModel) {
+    val estado by viewModel.pagosAcopiadores.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
         return
     }
+    val pagos = estado.datosOVacio()
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -480,43 +387,82 @@ private fun PagosAcopiadoresTab() {
                 colors = CardDefaults.cardColors(containerColor = AzulPago.copy(alpha = 0.08f))
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text("ℹ️ Pago al acopiador", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    Text("Tarifa: S/ $tarifaAcopiador por litro recolectado", style = MaterialTheme.typography.bodySmall)
+                    Text("ℹ️ Planilla de acopiadores · ${viewModel.mesActual}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("Cada acopiador cobra el sueldo mensual definido por el administrador.", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = viewModel::generarPlanilla,
+                        enabled = envio != EstadoEnvio.Enviando,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = AzulPago)
+                    ) { Text("Generar planilla del mes") }
                 }
             }
         }
 
-        items(acopiadoresConRegistros) { (nombre, litros, cantRegs) ->
-            val total = litros * tarifaAcopiador
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("$cantRegs entregas · $litros L recolectados", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                "S/ ${total.let { t -> "${t.toLong()}.${((t - t.toLong()) * 100).toLong().toString().padStart(2,'0')}" }}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = AzulPago
-                            )
-                            Text("${litros}L × S/$tarifaAcopiador", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = AzulPago)
-                    ) { Text("Registrar pago al acopiador") }
+        if (pagos.isEmpty()) {
+            item {
+                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    Text("Aún no se generó la planilla de este mes", style = MaterialTheme.typography.bodyMedium)
                 }
+            }
+        }
+
+        items(pagos, key = { it.id }) { pago ->
+            TarjetaPagoAcopiador(pago, enviando = envio == EstadoEnvio.Enviando) { viewModel.marcarPagadoAcopiador(pago) }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaPagoAcopiador(pago: PagoAcopiador, enviando: Boolean, onMarcarPagado: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(pago.nombreAcopiador, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${pago.entregas} entregas · ${pago.litrosRecolectados} L recolectados", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Periodo: ${pago.periodo}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(soles(pago.total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = AzulPago)
+                    Text(pago.estado.etiqueta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (pago.estado == EstadoPago.PAGADO) {
+                Text("Pagado el: ${pago.fechaPago.orEmpty()}", style = MaterialTheme.typography.bodySmall, color = VerdeHuata)
+            } else {
+                Button(
+                    onClick = onMarcarPagado,
+                    enabled = !enviando,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AzulPago)
+                ) { Text("Registrar pago al acopiador") }
             }
         }
     }
 }
+
+@Composable
+private fun MensajePago(mensaje: String, color: Color, onCerrar: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(mensaje, color = color, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = onCerrar) { Text("✕") }
+    }
+}
+
+private fun soles(monto: Double): String {
+    val centimos = kotlin.math.round(monto * 100).toLong()
+    return "S/ ${centimos / 100}.${(centimos % 100).toString().padStart(2, '0')}"
+}
+
+/** "2026-10-12" -> "12/10". */
+private fun fechaCorta(fechaIso: String): String = fechaIso.split("-").let { if (it.size == 3) "${it[2]}/${it[1]}" else fechaIso }

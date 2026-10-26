@@ -15,7 +15,10 @@ data class LoteProduccion(
     val fecha: String,                  // "dd/MM/yyyy"
     val idTrabajador: String,           // quien lo registró
     val observacion: String? = null,
-    val fechaVencimiento: String? = null
+    val fechaVencimiento: String? = null,
+    val stock: Double? = null,           // disponible según inventario del backend
+    val idProducto: String? = null,
+    val nombreProducto: String? = null
 ) {
     val cantidadFormateada: String
         get() = "$cantidadProducida $unidadMedida"
@@ -30,3 +33,22 @@ enum class TipoProducto(val etiqueta: String, val icono: String) {
     MANTEQUILLA("Mantequilla", "🧈"),
     OTRO("Otro", "📦")
 }
+
+/** Producto del catálogo de la planta (tabla products del backend). */
+data class ProductoPlanta(
+    val id: String,
+    val nombre: String,
+    val tipo: TipoProducto,
+    val unidad: String,
+    val precio: Double,
+    val stock: Double
+)
+
+/** Insumo del catálogo de la planta (tabla ingredients del backend). */
+data class InsumoPlanta(
+    val id: String,
+    val nombre: String,
+    val unidad: String,
+    val esLeche: Boolean,
+    val stock: Double
+)

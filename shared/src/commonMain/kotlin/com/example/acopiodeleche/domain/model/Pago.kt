@@ -21,11 +21,13 @@ data class Pago(
     val descuento: Double = 0.0,
     val llevadoAPlanta: Double = 0.0,
     val estado: EstadoPago = EstadoPago.PENDIENTE,
-    val fechaPago: String? = null
+    val fechaPago: String? = null,
+    val totalServidor: Double? = null,  // total liquidado por el backend (incluye bonos)
+    val nombreProductor: String? = null // viene resuelto desde el backend
 ) {
-    /** Total calculado automáticamente */
+    /** Total del backend si existe; si no, cálculo local */
     val totalCalculado: Double
-        get() = (litrosTotales * precioPorLitro) - descuento - llevadoAPlanta
+        get() = totalServidor ?: ((litrosTotales * precioPorLitro) - descuento - llevadoAPlanta)
 
     val totalFormateado: String
         get() = "S/ ${"%.2f".let { totalCalculado.toString() }}"
@@ -42,3 +44,28 @@ enum class EstadoPago(val etiqueta: String) {
     PAGADO("Pagado"),
     PARCIAL("Parcial")
 }
+
+/** Liquidación que generaría el backend para un productor en un período (sin guardarla). */
+data class VistaPreviaPago(
+    val idProductor: String,
+    val nombreProductor: String,
+    val comunidad: String,
+    val litros: Double,
+    val precioPorLitro: Double,
+    val total: Double,
+    val puedeGenerar: Boolean,
+    val yaGenerado: Boolean
+)
+
+/** Sueldo mensual de un acopiador (planilla generada por el backend). */
+data class PagoAcopiador(
+    val id: String,
+    val nombreAcopiador: String,
+    val periodo: String,
+    val sueldoBase: Double,
+    val total: Double,
+    val litrosRecolectados: Double,
+    val entregas: Int,
+    val estado: EstadoPago,
+    val fechaPago: String?
+)

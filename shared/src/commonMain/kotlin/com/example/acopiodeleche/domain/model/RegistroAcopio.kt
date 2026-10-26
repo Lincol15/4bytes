@@ -22,7 +22,10 @@ data class RegistroAcopio(
     val hora: String,               // formato "HH:mm"
     val litros: Double,
     val observacion: String? = null,
-    val recibido: Boolean = false   // false = en tránsito, true = recibido en planta
+    val recibido: Boolean = false,  // false = en tránsito, true = recibido en planta
+    val nombreProductor: String? = null, // viene resuelto desde el backend
+    val estado: String? = null,          // registrado, aceptado, rechazado, analizado (backend)
+    val idAcopiador: String? = null      // usuario acopiador que registró la entrega
 ) {
     /** Litros con unidad para mostrar en UI. */
     val litrosFormateados: String

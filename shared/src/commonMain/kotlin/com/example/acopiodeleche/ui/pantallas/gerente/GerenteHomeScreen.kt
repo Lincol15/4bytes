@@ -42,6 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
 import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.SesionActual
@@ -52,6 +57,13 @@ import kotlinx.coroutines.launch
 private val AzulGerente = Color(0xFF1A237E)
 private val VerdeHuata  = Color(0xFF2E7D32)
 private val AmarilloDash = Color(0xFFE65100)
+
+/** Formatea un Double con 2 decimales — alternativa KMP a "%.2f".format(x). */
+private fun Double.fmt2(): String {
+    val entero = toLong()
+    val decimal = ((this - entero) * 100).toLong().let { if (it < 0) -it else it }
+    return "$entero.${decimal.toString().padStart(2, '0')}"
+}
 
 // ── Ítems del menú lateral ─────────────────────────────────────────────────
 
@@ -241,17 +253,19 @@ fun GerenteHomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DashboardGerente() {
-    val registros   = DatosMock.registrosAcopio
-    val productores = DatosMock.productores
-    val lotes       = DatosMock.lotesProduccion
+private fun DashboardGerente(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+    // Indicadores calculados por Laravel (mismos que el panel web)
+    val estadoResumen  by viewModel.resumen.collectAsStateWithLifecycle()
+    val estadoAnalisis by viewModel.analisis.collectAsStateWithLifecycle()
+    val estadoPagos    by viewModel.pagos.collectAsStateWithLifecycle()
+    val resumen = (estadoResumen as? EstadoUi.Exito)?.datos
+    if (resumen == null) {
+        CargaOError(estadoResumen, onReintentar = viewModel::cargar)
+        return
+    }
     val ventas      = DatosMock.ventasSalidas
-    val pagos       = DatosMock.pagos
-    val analisis    = DatosMock.analisisCalidad
-
-    val totalVentas   = ventas.sumOf { it.total }
-    val litrosAcopio  = registros.sumOf { it.litros }
-    val pagosRend     = pagos.count { it.estado == EstadoPago.PENDIENTE }
+    val analisis    = estadoAnalisis.datosOVacio()
+    val pagosRend   = estadoPagos.datosOVacio().count { it.estado == EstadoPago.PENDIENTE }
 
     LazyColumn(
         contentPadding      = PaddingValues(16.dp),
@@ -265,15 +279,15 @@ private fun DashboardGerente() {
         // KPIs fila 1
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaKpi("🥛", "%.1f L".format(litrosAcopio), "Litros acopiados", AzulGerente, Modifier.weight(1f))
-                TarjetaKpi("👥", "${productores.count { it.estado }}", "Productores activos", VerdeHuata, Modifier.weight(1f))
+                TarjetaKpi("🥛", "${resumen.litrosMes} L", "Litros del mes", AzulGerente, Modifier.weight(1f))
+                TarjetaKpi("👥", "${resumen.productoresActivos}", "Productores activos", VerdeHuata, Modifier.weight(1f))
             }
         }
         // KPIs fila 2
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaKpi("🧀", "${lotes.size}", "Lotes producidos", AmarilloDash, Modifier.weight(1f))
-                TarjetaKpi("💰", "S/ ${totalVentas.toLong()}", "Total ventas", Color(0xFF6A1B9A), Modifier.weight(1f))
+                TarjetaKpi("🧀", "${resumen.lotesActivos}", "Lotes en proceso", AmarilloDash, Modifier.weight(1f))
+                TarjetaKpi("💰", "S/ ${resumen.ventasMes.toLong()}", "Ventas del mes", Color(0xFF6A1B9A), Modifier.weight(1f))
             }
         }
         // KPIs fila 3
@@ -301,7 +315,7 @@ private fun DashboardGerente() {
                         Text("Ecolácteos Huata · temporada actual", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(
-                        "S/ ${ConfiguracionPlanta.precioPorLitro}",
+                        "S/ ${resumen.precioLitro}",
                         style      = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color      = VerdeHuata
@@ -354,9 +368,13 @@ private fun TarjetaKpi(icono: String, valor: String, etiqueta: String, color: Co
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun CalidadGerenteTab() {
-    val analisis    = DatosMock.analisisCalidad
-    val productores = DatosMock.productores
+private fun CalidadGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+    val estado by viewModel.analisis.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val analisis = estado.datosOVacio()
 
     if (analisis.isEmpty()) {
         EmptyState("🔬", "Sin análisis de calidad", "El personal de calidad aún no ha registrado análisis")
@@ -372,8 +390,7 @@ private fun CalidadGerenteTab() {
             Text("${analisis.size} análisis · ${analisis.count { it.resultado == ResultadoCalidad.APTO }} aptos · ${analisis.count { it.resultado == ResultadoCalidad.NO_APTO }} no aptos",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        items(analisis.reversed()) { cal ->
-            val productor = productores.find { it.idProductor == cal.idProductor }
+        items(analisis) { cal ->
             val colorRes  = when (cal.resultado) {
                 ResultadoCalidad.APTO      -> VerdeHuata
                 ResultadoCalidad.NO_APTO   -> Color(0xFFC62828)
@@ -385,7 +402,7 @@ private fun CalidadGerenteTab() {
                     Text("🔬", fontSize = 22.sp)
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(productor?.nombreCompleto ?: "Productor", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(cal.nombreProductor ?: "Productor", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Text("${cal.fecha} ${cal.hora} · ${cal.codigoAnalisis}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Box(
@@ -406,9 +423,13 @@ private fun CalidadGerenteTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PagosGerenteTab() {
-    val pagos       = DatosMock.pagos
-    val productores = DatosMock.productores
+private fun PagosGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+    val estado by viewModel.pagos.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val pagos = estado.datosOVacio()
 
     if (pagos.isEmpty()) {
         EmptyState("💳", "Sin pagos registrados", "El administrador aún no ha generado pagos")
@@ -432,20 +453,19 @@ private fun PagosGerenteTab() {
             }
         }
         item { HorizontalDivider() }
-        items(pagos.reversed()) { pago ->
-            val productor  = productores.find { it.idProductor == pago.idProductor }
+        items(pagos) { pago ->
             val colorEstado = if (pago.estado == EstadoPago.PAGADO) VerdeHuata else Color(0xFFE65100)
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("💳", fontSize = 22.sp)
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(productor?.nombreCompleto ?: "Productor", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(pago.nombreProductor ?: "Productor", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Text("${pago.periodoDesde} – ${pago.periodoHasta} · ${pago.litrosTotales} L", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(pago.codigoPago, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("S/ ${"%.2f".format(pago.totalCalculado)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = VerdeHuata)
+                        Text("S/ ${pago.totalCalculado.fmt2()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = VerdeHuata)
                         Text(pago.estado.name, style = MaterialTheme.typography.labelSmall, color = colorEstado, fontWeight = FontWeight.Bold)
                     }
                 }

@@ -37,23 +37,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.EstadoQueja
 import com.example.acopiodeleche.domain.model.Queja
-import com.example.acopiodeleche.domain.model.SesionActual
-import kotlin.random.Random
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 
 private val VerdeHuata = Color(0xFF2E7D32)
 
 @Composable
 fun QuejasProductorScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: QuejasViewModel = viewModel { QuejasViewModel() }
 ) {
-    val idProductor = SesionActual.usuario?.idProductor ?: ""
-    var quejas by remember {
-        mutableStateOf(DatosMock.quejas.filter { it.idProductor == idProductor })
-    }
+    // Laravel devuelve solo las quejas del productor autenticado
+    val estadoQuejas by viewModel.quejas.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val quejas = estadoQuejas.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -81,13 +90,10 @@ fun QuejasProductorScreen(
 
         if (mostrarFormulario) {
             FormularioQueja(
-                alGuardar = { nueva ->
-                    DatosMock.quejas.add(nueva)
-                    quejas = DatosMock.quejas.filter { it.idProductor == idProductor }
-                    mostrarFormulario = false
-                },
-                alCancelar = { mostrarFormulario = false },
-                idProductor = idProductor
+                alGuardar = { titulo, descripcion -> viewModel.enviar(titulo, descripcion) },
+                alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+                enviando = envio == EstadoEnvio.Enviando,
+                mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
             )
         } else {
             Row(
@@ -101,13 +107,23 @@ fun QuejasProductorScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
-                    onClick = { mostrarFormulario = true },
+                    onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                     colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
                 ) { Text("+ Nueva queja") }
             }
+            (envio as? EstadoEnvio.Exito)?.let {
+                Text(
+                    it.mensaje,
+                    color = VerdeHuata,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
             HorizontalDivider()
 
-            if (quejas.isEmpty()) {
+            if (estadoQuejas !is EstadoUi.Exito) {
+                CargaOError(estadoQuejas, onReintentar = viewModel::cargar)
+            } else if (quejas.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("📝", fontSize = 48.sp)
@@ -202,16 +218,16 @@ private fun TarjetaQueja(queja: Queja) {
 
 @Composable
 private fun FormularioQueja(
-    alGuardar: (Queja) -> Unit,
+    alGuardar: (titulo: String, descripcion: String) -> Unit,
     alCancelar: () -> Unit,
-    idProductor: String
+    enviando: Boolean,
+    mensajeError: String?
 ) {
     var titulo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
-    var fecha by remember { mutableStateOf("") }
-    var hora by remember { mutableStateOf("") }
 
-    val formularioValido = titulo.isNotBlank() && descripcion.isNotBlank() && fecha.isNotBlank()
+    // Fecha y hora las registra el servidor al recibir la queja
+    val formularioValido = titulo.isNotBlank() && descripcion.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -248,42 +264,15 @@ private fun FormularioQueja(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = fecha,
-                onValueChange = { fecha = it },
-                label = { Text("Fecha *") },
-                placeholder = { Text("dd/MM/yyyy") },
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
-            OutlinedTextField(
-                value = hora,
-                onValueChange = { hora = it },
-                label = { Text("Hora") },
-                placeholder = { Text("HH:mm") },
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
+        if (mensajeError != null) {
+            Text(mensajeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
         Button(
-            onClick = {
-                alGuardar(
-                    Queja(
-                        id = "q-${Random.nextInt(1000,9999)}",
-                        idProductor = idProductor,
-                        titulo = titulo.trim(),
-                        descripcion = descripcion.trim(),
-                        fecha = fecha.trim(),
-                        hora = hora.ifBlank { "00:00" },
-                        estado = EstadoQueja.PENDIENTE
-                    )
-                )
-            },
-            enabled = formularioValido,
+            onClick = { alGuardar(titulo, descripcion) },
+            enabled = formularioValido && !enviando,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
-        ) { Text("Enviar queja", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        ) { Text(if (enviando) "Enviando..." else "Enviar queja", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
     }
 }

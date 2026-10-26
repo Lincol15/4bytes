@@ -9,7 +9,9 @@ data class Receta(
     val nombre: String,                 // "Queso 1kg", "Queso 2kg", "Yogur 1L"
     val producto: TipoProducto,
     val descripcion: String? = null,
-    val activa: Boolean = true
+    val activa: Boolean = true,
+    val idProducto: String? = null,      // producto del catálogo del backend
+    val nombreProducto: String? = null
 ) {
     val icono: String get() = producto.icono
 }

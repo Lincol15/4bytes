@@ -58,12 +58,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
+import com.example.acopiodeleche.domain.model.AjustePlanta
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.domain.model.Rol
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.Usuario
 import com.example.acopiodeleche.ui.components.FilaFechaHora
-import kotlin.random.Random
 import kotlinx.coroutines.launch
 
 private val VerdeHuata = Color(0xFF2E7D32)
@@ -259,7 +265,13 @@ fun AdminHomeScreen(
 }
 
 @Composable
-private fun DashboardAdmin() {
+private fun DashboardAdmin(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    val estado by viewModel.resumen.collectAsStateWithLifecycle()
+    val resumen = (estado as? EstadoUi.Exito)?.datos
+    if (resumen == null) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -269,14 +281,20 @@ private fun DashboardAdmin() {
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaDashboard("👥", "${DatosMock.usuarios.size}", "Usuarios", VerdeHuata, Modifier.weight(1f))
-                TarjetaDashboard("🌾", "${DatosMock.productores.count { it.estado }}", "Productores\nactivos", Color(0xFF1565C0), Modifier.weight(1f))
+                TarjetaDashboard("👥", "${resumen.usuarios}", "Usuarios", VerdeHuata, Modifier.weight(1f))
+                TarjetaDashboard("🌾", "${resumen.productoresActivos}", "Productores\nactivos", Color(0xFF1565C0), Modifier.weight(1f))
             }
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaDashboard("🥛", "${DatosMock.registrosAcopio.size}", "Acopios\nregistrados", Color(0xFF6A1B9A), Modifier.weight(1f))
-                TarjetaDashboard("💰", "S/ 1.70", "Precio\nactual/L", Color(0xFFE65100), Modifier.weight(1f))
+                TarjetaDashboard("🥛", "${resumen.entregasHoy}", "Acopios\nde hoy", Color(0xFF6A1B9A), Modifier.weight(1f))
+                TarjetaDashboard("💰", "S/ ${resumen.precioLitro}", "Precio\nactual/L", Color(0xFFE65100), Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TarjetaDashboard("📦", "${resumen.litrosHoy} L", "Litros\nhoy", VerdeHuata, Modifier.weight(1f))
+                TarjetaDashboard("🚚", "${resumen.entregasEnTransitoHoy}", "En tránsito\nhoy", Color(0xFF1565C0), Modifier.weight(1f))
             }
         }
         item {
@@ -286,7 +304,7 @@ private fun DashboardAdmin() {
         }
         item {
             Text(
-                text = "🔑 Sistema: 4bytes — Ecolácteos Huata\n📱 Versión: 1.0.0\n🗄️ Base de datos: SQLite (en desarrollo)",
+                text = "🔑 Sistema: 4bytes — Ecolácteos Huata\n📱 Versión: 1.0.0\n🗄️ Datos: servidor Ecolácteos (compartidos con la web)\n📣 Quejas abiertas: ${resumen.quejasAbiertas}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -311,21 +329,30 @@ private fun TarjetaDashboard(icono: String, valor: String, etiqueta: String, col
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UsuariosTab() {
-    var todosUsuarios by remember { mutableStateOf(DatosMock.usuarios.toList()) }
+private fun UsuariosTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    // Usuarios del sistema leídos desde Laravel (mismas cuentas que la web)
+    val estadoUsuarios by viewModel.usuarios.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val todosUsuarios = estadoUsuarios.datosOVacio()
     var busqueda by remember { mutableStateOf("") }
     var filtroRol by remember { mutableStateOf<Rol?>(null) }
     var mostrarFormulario by remember { mutableStateOf(false) }
 
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
+
     if (mostrarFormulario) {
         FormularioUsuario(
-            alGuardar = { nuevo ->
-                DatosMock.usuarios.add(nuevo)
-                todosUsuarios = DatosMock.usuarios.toList()
-                mostrarFormulario = false
-            },
-            alCancelar = { mostrarFormulario = false }
+            alGuardar = { nuevo -> viewModel.crearUsuario(nuevo) },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
         )
+        return
+    }
+    if (estadoUsuarios !is EstadoUi.Exito) {
+        CargaOError(estadoUsuarios, onReintentar = viewModel::cargar)
         return
     }
 
@@ -356,7 +383,7 @@ private fun UsuariosTab() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
-                    onClick = { mostrarFormulario = true },
+                    onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                 ) { Text("+ Nuevo") }
             }
@@ -396,6 +423,10 @@ private fun UsuariosTab() {
             }
         }
 
+        (envio as? EstadoEnvio.Error)?.let {
+            Text(it.mensaje, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        }
         HorizontalDivider()
 
         if (usuariosFiltrados.isEmpty()) {
@@ -421,13 +452,7 @@ private fun UsuariosTab() {
                 items(usuariosFiltrados, key = { it.id }) { u ->
                     TarjetaUsuario(
                         usuario = u,
-                        onDesactivar = {
-                            val idx = DatosMock.usuarios.indexOfFirst { it.id == u.id }
-                            if (idx != -1) {
-                                DatosMock.usuarios[idx] = u.copy(estado = !u.estado)
-                                todosUsuarios = DatosMock.usuarios.toList()
-                            }
-                        }
+                        onDesactivar = { viewModel.cambiarEstadoUsuario(u) }
                     )
                 }
             }
@@ -487,7 +512,9 @@ private fun TarjetaUsuario(usuario: Usuario, onDesactivar: () -> Unit) {
 @Composable
 private fun FormularioUsuario(
     alGuardar: (Usuario) -> Unit,
-    alCancelar: () -> Unit
+    alCancelar: () -> Unit,
+    enviando: Boolean = false,
+    mensajeError: String? = null
 ) {
     var nombres by remember { mutableStateOf("") }
     var apellidos by remember { mutableStateOf("") }
@@ -498,7 +525,8 @@ private fun FormularioUsuario(
     var rolSeleccionado by remember { mutableStateOf(Rol.PRODUCTOR) }
     var dropRolExpanded by remember { mutableStateOf(false) }
 
-    val formularioValido = nombres.isNotBlank() && apellidos.isNotBlank()
+    // Laravel exige DNI único, correo único y contraseña de al menos 6 caracteres
+    val formularioValido = nombres.isNotBlank() && apellidos.isNotBlank() && dni.isNotBlank()
         && correo.isNotBlank() && contrasena.length >= 6
 
     LazyColumn(
@@ -526,7 +554,7 @@ private fun FormularioUsuario(
         item {
             OutlinedTextField(
                 value = dni, onValueChange = { if (it.length <= 8) dni = it.filter { c -> c.isDigit() } },
-                label = { Text("DNI") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = { Text("DNI *") }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
         }
         item {
@@ -571,13 +599,16 @@ private fun FormularioUsuario(
                 }
             }
         }
+        if (mensajeError != null) {
+            item { Text(mensajeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
                         alGuardar(
                             Usuario(
-                                id = "u-${Random.nextInt(1000, 9999)}",
+                                id = "",   // lo asigna el backend
                                 nombres = nombres.trim(),
                                 apellidos = apellidos.trim(),
                                 dni = dni.trim(),
@@ -588,10 +619,10 @@ private fun FormularioUsuario(
                             )
                         )
                     },
-                    enabled = formularioValido,
+                    enabled = formularioValido && !enviando,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
-                ) { Text("Guardar") }
+                ) { Text(if (enviando) "Guardando..." else "Guardar") }
             }
         }
     }
@@ -601,8 +632,11 @@ private fun FormularioUsuario(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AcopiadoresTab() {
-    val acopiadores = DatosMock.usuarios.filter { it.rol == Rol.ACOPIADOR }
+private fun AcopiadoresTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    val estadoUsuarios by viewModel.usuarios.collectAsStateWithLifecycle()
+    val estadoEntregas by viewModel.entregasHoy.collectAsStateWithLifecycle()
+    val acopiadores = estadoUsuarios.datosOVacio().filter { it.rol == Rol.ACOPIADOR }
+    val entregasHoy = estadoEntregas.datosOVacio()
     var acopiadorDetalle by remember { mutableStateOf<Usuario?>(null) }
 
     if (acopiadorDetalle != null) {
@@ -610,6 +644,10 @@ private fun AcopiadoresTab() {
             acopiador = acopiadorDetalle!!,
             onVolver  = { acopiadorDetalle = null }
         )
+        return
+    }
+    if (estadoUsuarios !is EstadoUi.Exito) {
+        CargaOError(estadoUsuarios, onReintentar = viewModel::cargar)
         return
     }
 
@@ -631,12 +669,8 @@ private fun AcopiadoresTab() {
         }
 
         items(acopiadores) { acopiador ->
-            val registros = DatosMock.registrosAcopio.filter { r ->
-                r.acopiador == acopiador.nombreCompleto
-            }
+            val registros = entregasHoy.filter { r -> r.idAcopiador == acopiador.id }
             val litrosHoy   = registros.sumOf { it.litros }
-            val asignacion  = DatosMock.asignaciones.find { it.idAcopiador == acopiador.id }
-            val cantProductores = asignacion?.idsProductores?.size ?: 0
 
             Card(
                 modifier  = Modifier.fillMaxWidth().clickable { acopiadorDetalle = acopiador },
@@ -681,7 +715,7 @@ private fun AcopiadoresTab() {
                     ) {
                         ResumenChip("🥛", "$litrosHoy L", "Litros hoy", VerdeHuata)
                         ResumenChip("📋", "${registros.size}", "Entregas", Color(0xFF1565C0))
-                        ResumenChip("👥", "$cantProductores", "Productores", Color(0xFF6A1B9A))
+                        ResumenChip("✅", "${registros.count { it.recibido }}", "Recibidos", Color(0xFF6A1B9A))
                     }
                 }
             }
@@ -705,6 +739,8 @@ private fun ResumenChip(icono: String, valor: String, label: String, color: Colo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DetalleAcopiadorScreen(acopiador: Usuario, onVolver: () -> Unit) {
+    val viewModel: AcopiadorAdminViewModel = viewModel(key = "acopiador-${acopiador.id}") { AcopiadorAdminViewModel(acopiador) }
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
     var tabActual by remember { mutableStateOf(0) }
     val tabs = listOf("Registros del día", "Mis productores", "Configurar asignación", "Configurar vehículo")
 
@@ -745,20 +781,28 @@ private fun DetalleAcopiadorScreen(acopiador: Usuario, onVolver: () -> Unit) {
             }
         }
 
+        (envio as? EstadoEnvio.Error)?.let {
+            Text(it.mensaje, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        }
         when (tabActual) {
-            0 -> RegistrosDiaAcopiador(acopiador)
-            1 -> ProductoresAcopiador(acopiador)
-            2 -> ConfigurarAsignacion(acopiador)
-            3 -> ConfigurarVehiculo(acopiador)
+            0 -> RegistrosDiaAcopiador(viewModel)
+            1 -> ProductoresAcopiador(viewModel)
+            2 -> ConfigurarAsignacion(acopiador, viewModel)
+            3 -> ConfigurarVehiculo(acopiador, viewModel)
         }
     }
 }
 
 @Composable
-private fun RegistrosDiaAcopiador(acopiador: Usuario) {
-    val registros = DatosMock.registrosAcopio.filter { r ->
-        r.acopiador == acopiador.nombreCompleto
+private fun RegistrosDiaAcopiador(viewModel: AcopiadorAdminViewModel) {
+    // Entregas de hoy de este acopiador, desde Laravel
+    val estado by viewModel.entregasHoy.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
     }
+    val registros = estado.datosOVacio()
     val litrosTotales = registros.sumOf { it.litros }
 
     if (registros.isEmpty()) {
@@ -791,8 +835,7 @@ private fun RegistrosDiaAcopiador(acopiador: Usuario) {
                 }
             }
         }
-        items(registros.reversed()) { r ->
-            val productor = DatosMock.productores.find { it.idProductor == r.idProductor }
+        items(registros) { r ->
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -802,7 +845,7 @@ private fun RegistrosDiaAcopiador(acopiador: Usuario) {
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            productor?.nombreCompleto ?: "Productor",
+                            r.nombreProductor ?: "Productor",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -838,13 +881,18 @@ private fun RegistrosDiaAcopiador(acopiador: Usuario) {
 }
 
 @Composable
-private fun ProductoresAcopiador(acopiador: Usuario) {
-    val asignacion = DatosMock.asignaciones.find { it.idAcopiador == acopiador.id }
-    val misProductores = if (asignacion != null) {
-        DatosMock.productores.filter { p -> asignacion.idsProductores.contains(p.idProductor) }
-    } else {
-        DatosMock.productores.filter { p -> p.comunidad == acopiador.comunidad }
+private fun ProductoresAcopiador(viewModel: AcopiadorAdminViewModel) {
+    // Laravel resuelve la asignación (individual o por comunidad)
+    val estadoAsignacion by viewModel.asignacion.collectAsStateWithLifecycle()
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val estadoEntregas by viewModel.entregasHoy.collectAsStateWithLifecycle()
+    val asignacion = (estadoAsignacion as? EstadoUi.Exito)?.datos
+    if (asignacion == null || estadoProductores !is EstadoUi.Exito) {
+        CargaOError(if (asignacion == null) estadoAsignacion else estadoProductores, onReintentar = viewModel::cargar)
+        return
     }
+    val misProductores = estadoProductores.datosOVacio().filter { p -> asignacion.idsProductores.contains(p.idProductor) }
+    val entregasHoy = estadoEntregas.datosOVacio()
 
     if (misProductores.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -874,8 +922,8 @@ private fun ProductoresAcopiador(acopiador: Usuario) {
             )
         }
         items(misProductores) { p ->
-            val litros = DatosMock.registrosAcopio
-                .filter { r -> r.idProductor == p.idProductor && r.acopiador == acopiador.nombreCompleto }
+            val litros = entregasHoy
+                .filter { r -> r.idProductor == p.idProductor }
                 .sumOf { it.litros }
 
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(1.dp)) {
@@ -906,17 +954,24 @@ private fun ProductoresAcopiador(acopiador: Usuario) {
 }
 
 @Composable
-private fun ConfigurarAsignacion(acopiador: Usuario) {
-    // Estado mutable de los IDs asignados para este acopiador
-    var idsAsignados by remember {
-        val existente = DatosMock.asignaciones.find { it.idAcopiador == acopiador.id }
-        mutableStateOf(existente?.idsProductores?.toMutableList() ?: mutableListOf())
+private fun ConfigurarAsignacion(acopiador: Usuario, viewModel: AcopiadorAdminViewModel) {
+    val estadoAsignacion by viewModel.asignacion.collectAsStateWithLifecycle()
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val asignacion = (estadoAsignacion as? EstadoUi.Exito)?.datos
+    if (asignacion == null || estadoProductores !is EstadoUi.Exito) {
+        CargaOError(if (asignacion == null) estadoAsignacion else estadoProductores, onReintentar = viewModel::cargar)
+        return
     }
-    var comunidadFiltro by remember { mutableStateOf(acopiador.comunidad ?: "") }
-    var guardado by remember { mutableStateOf(false) }
+    val todosProductores = estadoProductores.datosOVacio()
 
-    val comunidades = DatosMock.productores.map { it.comunidad }.distinct().sorted()
-    val productoresFiltrados = DatosMock.productores.filter { p ->
+    // Selección inicial = asignación vigente en Laravel
+    var idsAsignados by remember(asignacion) { mutableStateOf(asignacion.idsProductores.toMutableList()) }
+    var comunidadFiltro by remember { mutableStateOf(acopiador.comunidad ?: "") }
+    val guardado = envio is EstadoEnvio.Exito
+
+    val comunidades = todosProductores.map { it.comunidad }.filter { it.isNotBlank() }.distinct().sorted()
+    val productoresFiltrados = todosProductores.filter { p ->
         p.estado && (comunidadFiltro.isBlank() || p.comunidad == comunidadFiltro)
     }
 
@@ -971,7 +1026,7 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
                         } else {
                             (idsAsignados + p.idProductor).toMutableList()
                         }
-                        guardado = false
+                        viewModel.limpiarEnvio()
                     },
                 colors = CardDefaults.cardColors(
                     containerColor = if (seleccionado) VerdeHuata.copy(0.1f)
@@ -996,48 +1051,9 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
         item {
             Spacer(Modifier.height(4.dp))
             Button(
-                onClick = {
-                    // 1. Guardar la asignación de productores
-                    val idx = DatosMock.asignaciones.indexOfFirst { it.idAcopiador == acopiador.id }
-                    val nueva = com.example.acopiodeleche.domain.model.AsignacionAcopiador(
-                        idAcopiador     = acopiador.id,
-                        idsProductores  = idsAsignados.toList()
-                    )
-                    if (idx == -1) DatosMock.asignaciones.add(nueva)
-                    else DatosMock.asignaciones[idx] = nueva
-                    
-                    // 2. Actualizar automáticamente la comunidad y zona del acopiador
-                    // basándose en los productores asignados
-                    val comunidadesAsignadas = DatosMock.productores
-                        .filter { p -> idsAsignados.contains(p.idProductor) }
-                        .map { it.comunidad }
-                        .distinct()
-                    
-                    // Actualizar el usuario acopiador con la nueva comunidad
-                    val idxUsuario = DatosMock.usuarios.indexOfFirst { it.id == acopiador.id }
-                    if (idxUsuario != -1) {
-                        val usuarioActualizado = DatosMock.usuarios[idxUsuario].copy(
-                            comunidad = if (comunidadesAsignadas.size == 1) {
-                                // Si todos los productores son de una sola comunidad
-                                comunidadesAsignadas.first()
-                            } else if (comunidadesAsignadas.isNotEmpty()) {
-                                // Si hay múltiples comunidades, mostrarlas todas
-                                comunidadesAsignadas.joinToString(", ")
-                            } else {
-                                // Si no hay productores asignados
-                                "Sin asignación"
-                            }
-                        )
-                        DatosMock.usuarios[idxUsuario] = usuarioActualizado
-                        
-                        // Si el acopiador está logueado, actualizar también la sesión
-                        if (com.example.acopiodeleche.domain.model.SesionActual.usuario?.id == acopiador.id) {
-                            com.example.acopiodeleche.domain.model.SesionActual.iniciar(usuarioActualizado)
-                        }
-                    }
-                    
-                    guardado = true
-                },
+                // Laravel guarda la asignación (y la comunidad si todos son de una misma)
+                onClick = { viewModel.guardarAsignacion(idsAsignados.toList()) },
+                enabled = envio != EstadoEnvio.Enviando,
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
             ) {
@@ -1052,7 +1068,8 @@ private fun ConfigurarAsignacion(acopiador: Usuario) {
 
 // ── CONFIGURAR VEHÍCULO ───────────────────────────────────────────────────
 @Composable
-private fun ConfigurarVehiculo(acopiador: Usuario) {
+private fun ConfigurarVehiculo(acopiador: Usuario, viewModel: AcopiadorAdminViewModel) {
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
     // Vehículos disponibles
     val vehiculosDisponibles = listOf(
         "Furgoneta 01",
@@ -1062,7 +1079,7 @@ private fun ConfigurarVehiculo(acopiador: Usuario) {
     )
     
     var vehiculoSeleccionado by remember { mutableStateOf(acopiador.vehiculo ?: "") }
-    var guardado by remember { mutableStateOf(false) }
+    val guardado = envio is EstadoEnvio.Exito
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -1144,7 +1161,7 @@ private fun ConfigurarVehiculo(acopiador: Usuario) {
                     .fillMaxWidth()
                     .clickable {
                         vehiculoSeleccionado = vehiculo
-                        guardado = false
+                        viewModel.limpiarEnvio()
                     },
                 colors = CardDefaults.cardColors(
                     containerColor = if (seleccionado) VerdeHuata.copy(0.12f)
@@ -1195,24 +1212,8 @@ private fun ConfigurarVehiculo(acopiador: Usuario) {
         item {
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick = {
-                    // Actualizar el vehículo del acopiador
-                    val idxUsuario = DatosMock.usuarios.indexOfFirst { it.id == acopiador.id }
-                    if (idxUsuario != -1) {
-                        val usuarioActualizado = DatosMock.usuarios[idxUsuario].copy(
-                            vehiculo = vehiculoSeleccionado
-                        )
-                        DatosMock.usuarios[idxUsuario] = usuarioActualizado
-                        
-                        // Si el acopiador está logueado, actualizar también la sesión
-                        if (SesionActual.usuario?.id == acopiador.id) {
-                            SesionActual.iniciar(usuarioActualizado)
-                        }
-                    }
-                    
-                    guardado = true
-                },
-                enabled = vehiculoSeleccionado.isNotBlank(),
+                onClick = { viewModel.guardarVehiculo(vehiculoSeleccionado) },
+                enabled = vehiculoSeleccionado.isNotBlank() && envio != EstadoEnvio.Enviando,
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
             ) {
@@ -1250,8 +1251,14 @@ private fun ConfigurarVehiculo(acopiador: Usuario) {
 
 // ── TAB QUEJAS DEL PRODUCTOR ──────────────────────────────────────────────
 @Composable
-private fun QuejasAdminTab() {
-    var quejas by remember { mutableStateOf(DatosMock.quejas.toList()) }
+private fun QuejasAdminTab(
+    viewModel: com.example.acopiodeleche.ui.pantallas.productor.QuejasViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel { com.example.acopiodeleche.ui.pantallas.productor.QuejasViewModel() }
+) {
+    // Quejas enviadas por los productores (desde la app o la web), leídas de Laravel
+    val estadoQuejas by viewModel.quejas.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val quejas = (estadoQuejas as? com.example.acopiodeleche.ui.estado.EstadoUi.Exito)?.datos.orEmpty()
     val pendientes = quejas.count {
         it.estado == com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE
     }
@@ -1271,9 +1278,15 @@ private fun QuejasAdminTab() {
                 )
             }
         }
+        (envio as? com.example.acopiodeleche.ui.estado.EstadoEnvio.Error)?.let {
+            Text(it.mensaje, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        }
         HorizontalDivider()
 
-        if (quejas.isEmpty()) {
+        if (estadoQuejas !is com.example.acopiodeleche.ui.estado.EstadoUi.Exito) {
+            com.example.acopiodeleche.ui.estado.CargaOError(estadoQuejas, onReintentar = viewModel::cargar)
+        } else if (quejas.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No hay quejas registradas", style = MaterialTheme.typography.bodyLarge)
             }
@@ -1283,7 +1296,6 @@ private fun QuejasAdminTab() {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(quejas) { queja: com.example.acopiodeleche.domain.model.Queja ->
-                    val productor = DatosMock.productores.find { it.idProductor == queja.idProductor }
                     var respuestaTexto by remember { mutableStateOf(queja.respuesta ?: "") }
                     var respondiendo by remember { mutableStateOf(false) }
 
@@ -1297,7 +1309,7 @@ private fun QuejasAdminTab() {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(queja.titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text(
-                                        "${productor?.nombreCompleto ?: "Productor"} · ${queja.fecha}",
+                                        "${queja.nombreProductor ?: "Productor"} · ${queja.fecha}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1342,18 +1354,15 @@ private fun QuejasAdminTab() {
                                     TextButton(onClick = { respondiendo = false }) { Text("Cancelar") }
                                     Button(
                                         onClick = {
-                                            val idx = DatosMock.quejas.indexOfFirst { it.id == queja.id }
-                                            if (idx != -1) {
-                                                DatosMock.quejas[idx] = queja.copy(
-                                                    respuesta = respuestaTexto,
-                                                    estado = com.example.acopiodeleche.domain.model.EstadoQueja.RESPONDIDA,
-                                                    fechaRespuesta = "Hoy"
-                                                )
-                                                quejas = DatosMock.quejas.toList()
-                                            }
+                                            viewModel.responder(
+                                                queja,
+                                                com.example.acopiodeleche.domain.model.EstadoQueja.RESPONDIDA,
+                                                respuestaTexto
+                                            )
                                             respondiendo = false
                                         },
-                                        enabled = respuestaTexto.isNotBlank(),
+                                        enabled = respuestaTexto.isNotBlank() &&
+                                            envio != com.example.acopiodeleche.ui.estado.EstadoEnvio.Enviando,
                                         colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
                                     ) { Text("Enviar respuesta") }
                                 }
@@ -1376,19 +1385,26 @@ private fun QuejasAdminTab() {
 // ── TAB AVISOS / EVENTOS ─────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AvisosTab() {
-    var avisos by remember { mutableStateOf(DatosMock.notificaciones.toList()) }
+private fun AvisosTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    // Avisos publicados en Laravel (los ven los productores en la app y en la web)
+    val estadoAvisos by viewModel.avisos.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val avisos = estadoAvisos.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
 
     if (mostrarFormulario) {
         FormularioAviso(
-            alGuardar = { nuevo ->
-                DatosMock.notificaciones.add(nuevo)
-                avisos = DatosMock.notificaciones.toList()
-                mostrarFormulario = false
-            },
-            alCancelar = { mostrarFormulario = false }
+            alGuardar = { titulo, mensaje, publicadoEn -> viewModel.publicarAviso(titulo, mensaje, publicadoEn) },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
         )
+    } else if (estadoAvisos !is EstadoUi.Exito) {
+        CargaOError(estadoAvisos, onReintentar = viewModel::cargar)
     } else {
         Column {
             Row(
@@ -1402,7 +1418,7 @@ private fun AvisosTab() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
-                    onClick = { mostrarFormulario = true },
+                    onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                 ) { Text("+ Nuevo aviso") }
             }
@@ -1419,7 +1435,7 @@ private fun AvisosTab() {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(aviso.titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                 Text(aviso.mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${aviso.fecha} ${aviso.hora} · ${aviso.tipo.etiqueta}",
+                                Text("${aviso.fecha} ${aviso.hora}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -1434,8 +1450,10 @@ private fun AvisosTab() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FormularioAviso(
-    alGuardar: (com.example.acopiodeleche.domain.model.Notificacion) -> Unit,
-    alCancelar: () -> Unit
+    alGuardar: (titulo: String, mensaje: String, publicadoEn: String?) -> Unit,
+    alCancelar: () -> Unit,
+    enviando: Boolean = false,
+    mensajeError: String? = null
 ) {
     var titulo by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
@@ -1500,30 +1518,33 @@ private fun FormularioAviso(
         item {
             Button(
                 onClick = {
-                    alGuardar(
-                        com.example.acopiodeleche.domain.model.Notificacion(
-                            id = "n-${kotlin.random.Random.nextInt(1000, 9999)}",
-                            titulo = titulo.trim(),
-                            mensaje = mensaje.trim(),
-                            tipo = tipoSeleccionado,
-                            fecha = fecha.trim(),
-                            hora = hora.trim(),
-                            leida = false
-                        )
-                    )
+                    // El backend no tiene "tipo": se antepone su icono al título.
+                    alGuardar("${tipoSeleccionado.icono} ${titulo.trim()}", mensaje.trim(), fechaHoraIso(fecha, hora))
                 },
-                enabled = formularioValido,
+                enabled = formularioValido && !enviando,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
-            ) { Text("Enviar aviso a todos los productores", fontWeight = FontWeight.Bold) }
+            ) { Text(if (enviando) "Publicando..." else "Enviar aviso a todos los productores", fontWeight = FontWeight.Bold) }
+        }
+        if (mensajeError != null) {
+            item { Text(mensajeError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
 
 @Composable
-private fun ActualizarPrecioTab() {
-    var precioTexto  by remember { mutableStateOf(ConfiguracionPlanta.precioPorLitro.toString()) }
-    var guardado     by remember { mutableStateOf(false) }
+private fun ActualizarPrecioTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    val estadoAjustes by viewModel.ajustes.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val ajustes = estadoAjustes.datosOVacio()
+    if (estadoAjustes !is EstadoUi.Exito) {
+        CargaOError(estadoAjustes, onReintentar = viewModel::cargar)
+        return
+    }
+    // Precio vigente guardado en Laravel (plant_configs.precio_litro_leche)
+    val precioActual = ajustes.firstOrNull { it.clave == "precio_litro_leche" }?.valor.orEmpty()
+    var precioTexto  by remember(precioActual) { mutableStateOf(precioActual) }
+    val guardado     = envio is EstadoEnvio.Exito
     val precioValido = precioTexto.toDoubleOrNull()?.let { it > 0 } ?: false
 
     LazyColumn(
@@ -1535,7 +1556,6 @@ private fun ActualizarPrecioTab() {
             Text("Este precio se aplica a los pagos de todos los productores", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
-            // Precio actual vigente
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors   = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.1f)),
@@ -1551,7 +1571,7 @@ private fun ActualizarPrecioTab() {
                         Text("Ecolácteos Huata · temporada actual", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(
-                        "S/ ${ConfiguracionPlanta.precioPorLitro} / L",
+                        "S/ $precioActual / L",
                         style      = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color      = VerdeHuata
@@ -1565,7 +1585,7 @@ private fun ActualizarPrecioTab() {
                     Text("Nuevo precio por litro", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
                         value          = precioTexto,
-                        onValueChange  = { precioTexto = it; guardado = false },
+                        onValueChange  = { precioTexto = it; viewModel.limpiarEnvio() },
                         label          = { Text("Precio (S/)") },
                         prefix         = { Text("S/ ") },
                         suffix         = { Text("por litro") },
@@ -1583,19 +1603,16 @@ private fun ActualizarPrecioTab() {
                         ) {
                             Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("✅", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
-                                Text("Precio actualizado a S/ ${ConfiguracionPlanta.precioPorLitro}/L", style = MaterialTheme.typography.bodySmall, color = VerdeHuata, fontWeight = FontWeight.Bold)
+                                Text("Precio actualizado a S/ $precioActual/L", style = MaterialTheme.typography.bodySmall, color = VerdeHuata, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                    (envio as? EstadoEnvio.Error)?.let {
+                        Text(it.mensaje, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
                     Button(
-                        onClick = {
-                            val nuevo = precioTexto.toDoubleOrNull()
-                            if (nuevo != null && nuevo > 0) {
-                                ConfiguracionPlanta.precioPorLitro = nuevo
-                                guardado = true
-                            }
-                        },
-                        enabled  = precioValido && !guardado,
+                        onClick = { viewModel.guardarAjustes("acopio", mapOf("precio_litro_leche" to precioTexto.trim())) },
+                        enabled  = precioValido && precioTexto.trim() != precioActual && envio != EstadoEnvio.Enviando,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                     ) { Text("Actualizar precio", fontWeight = FontWeight.Bold) }
@@ -1611,7 +1628,7 @@ private fun ActualizarPrecioTab() {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                     Text("⚠️", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
                     Text(
-                        "Al actualizar el precio, los pagos nuevos se calcularán con este valor. Los pagos ya generados no se modifican.",
+                        "Al actualizar el precio, las entregas y pagos nuevos se calcularán con este valor. Los ya registrados no se modifican.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF5D4037)
                     )
@@ -1621,21 +1638,30 @@ private fun ActualizarPrecioTab() {
     }
 }
 
+/**
+ * Configuración de la planta guardada en Laravel (plant_configs). Solo se muestran los ajustes
+ * que existen en el backend; se editan por grupo, igual que en el panel web.
+ */
 @Composable
-private fun ConfiguracionSistemaTab() {
-    var nombre    by remember { mutableStateOf(ConfiguracionPlanta.nombre) }
-    var slogan    by remember { mutableStateOf(ConfiguracionPlanta.slogan) }
-    var ruc       by remember { mutableStateOf(ConfiguracionPlanta.ruc) }
-    var direccion by remember { mutableStateOf(ConfiguracionPlanta.direccion) }
-    var telefono  by remember { mutableStateOf(ConfiguracionPlanta.telefono) }
-    var correo    by remember { mutableStateOf(ConfiguracionPlanta.correo) }
-    var distrito  by remember { mutableStateOf(ConfiguracionPlanta.distrito) }
-    var provincia by remember { mutableStateOf(ConfiguracionPlanta.provincia) }
-    var region    by remember { mutableStateOf(ConfiguracionPlanta.region) }
-    var litrosMin by remember { mutableStateOf(ConfiguracionPlanta.litrosMinimosEntrega.toString()) }
-    var litrosMax by remember { mutableStateOf(ConfiguracionPlanta.litrosMaximosEntrega.toString()) }
-    var diasCiclo by remember { mutableStateOf(ConfiguracionPlanta.diasPagoCiclo.toString()) }
-    var guardado  by remember { mutableStateOf(false) }
+private fun ConfiguracionSistemaTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+    val estadoAjustes by viewModel.ajustes.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    if (estadoAjustes !is EstadoUi.Exito) {
+        CargaOError(estadoAjustes, onReintentar = viewModel::cargar)
+        return
+    }
+    val ajustes = estadoAjustes.datosOVacio()
+    fun valor(clave: String) = ajustes.firstOrNull { it.clave == clave }?.valor.orEmpty()
+
+    var nombre    by remember(ajustes) { mutableStateOf(valor("nombre_planta")) }
+    var ruc       by remember(ajustes) { mutableStateOf(valor("ruc_planta")) }
+    var direccion by remember(ajustes) { mutableStateOf(valor("direccion_planta")) }
+    var telefono  by remember(ajustes) { mutableStateOf(valor("telefono_planta")) }
+    var correo    by remember(ajustes) { mutableStateOf(valor("email_planta")) }
+    var litrosMax by remember(ajustes) { mutableStateOf(valor("litros_maximos_entrega")) }
+    var diaPago   by remember(ajustes) { mutableStateOf(valor("dias_pago_semanal")) }
+    val diasPago  = ajustes.firstOrNull { it.clave == "dias_pago_semanal" }?.opciones.orEmpty()
+    val guardado  = envio is EstadoEnvio.Exito
 
     LazyColumn(
         contentPadding      = PaddingValues(16.dp),
@@ -1643,66 +1669,63 @@ private fun ConfiguracionSistemaTab() {
     ) {
         item {
             Text("⚙️ Configuración del sistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Ajusta todos los parámetros de Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Valores compartidos con el panel web de Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // ── Información de la empresa ──────────────────────────────────────
+        item { SeccionConfig("🏢 Información de la empresa") }
         item {
-            SeccionConfig("🏢 Información de la empresa")
+            OutlinedTextField(value = nombre, onValueChange = { nombre = it; viewModel.limpiarEnvio() }, label = { Text("Nombre de la empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
-            OutlinedTextField(value = nombre, onValueChange = { nombre = it; guardado = false }, label = { Text("Nombre de la empresa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = ruc, onValueChange = { if (it.length <= 11) ruc = it.filter { c -> c.isDigit() }; viewModel.limpiarEnvio() }, label = { Text("RUC") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         }
         item {
-            OutlinedTextField(value = slogan, onValueChange = { slogan = it; guardado = false }, label = { Text("Slogan") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        }
-        item {
-            OutlinedTextField(value = ruc, onValueChange = { if (it.length <= 11) ruc = it.filter { c -> c.isDigit() }; guardado = false }, label = { Text("RUC") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        }
-        item {
-            OutlinedTextField(value = direccion, onValueChange = { direccion = it; guardado = false }, label = { Text("Dirección") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = direccion, onValueChange = { direccion = it; viewModel.limpiarEnvio() }, label = { Text("Dirección") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = telefono, onValueChange = { telefono = it; guardado = false }, label = { Text("Teléfono") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.weight(1f))
-                OutlinedTextField(value = correo, onValueChange = { correo = it; guardado = false }, label = { Text("Correo") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.weight(1f))
-            }
-        }
-
-        // ── Ubicación ──────────────────────────────────────────────────────
-        item { SeccionConfig("📍 Ubicación") }
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = distrito, onValueChange = { distrito = it; guardado = false }, label = { Text("Distrito") }, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = provincia, onValueChange = { provincia = it; guardado = false }, label = { Text("Provincia") }, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = telefono, onValueChange = { telefono = it; viewModel.limpiarEnvio() }, label = { Text("Teléfono") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.weight(1f))
+                OutlinedTextField(value = correo, onValueChange = { correo = it; viewModel.limpiarEnvio() }, label = { Text("Correo") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.weight(1f))
             }
         }
         item {
-            OutlinedTextField(value = region, onValueChange = { region = it; guardado = false }, label = { Text("Región") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Button(
+                onClick = {
+                    viewModel.guardarAjustes("empresa", mapOf(
+                        "nombre_planta" to nombre.trim(), "ruc_planta" to ruc.trim(), "direccion_planta" to direccion.trim(),
+                        "telefono_planta" to telefono.trim(), "email_planta" to correo.trim()
+                    ))
+                },
+                enabled  = envio != EstadoEnvio.Enviando,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+            ) { Text("Guardar datos de la empresa", fontWeight = FontWeight.Bold) }
         }
 
         // ── Límites operativos ─────────────────────────────────────────────
-        item { SeccionConfig("📊 Límites operativos") }
+        item { SeccionConfig("📊 Acopio y pagos") }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = litrosMin, onValueChange = { litrosMin = it; guardado = false },
-                    label = { Text("Litros mínimos/entrega") }, suffix = { Text("L") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = litrosMax, onValueChange = { litrosMax = it; guardado = false },
-                    label = { Text("Litros máximos/entrega") }, suffix = { Text("L") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f)
-                )
+            OutlinedTextField(
+                value = litrosMax, onValueChange = { litrosMax = it; viewModel.limpiarEnvio() },
+                label = { Text("Litros máximos por entrega") }, suffix = { Text("L") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Text("Día de pago a productores", style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(diasPago) { dia -> FiltroChip(dia, diaPago == dia) { diaPago = dia; viewModel.limpiarEnvio() } }
             }
         }
         item {
-            OutlinedTextField(
-                value = diasCiclo, onValueChange = { diasCiclo = it; guardado = false },
-                label = { Text("Días por ciclo de pago") }, suffix = { Text("días") }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
-            )
+            Button(
+                onClick = { viewModel.guardarAjustes("acopio", mapOf("litros_maximos_entrega" to litrosMax.trim(), "dias_pago_semanal" to diaPago)) },
+                enabled  = litrosMax.toDoubleOrNull() != null && envio != EstadoEnvio.Enviando,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
+            ) { Text("Guardar acopio y pagos", fontWeight = FontWeight.Bold) }
         }
 
         // ── Info del sistema ───────────────────────────────────────────────
@@ -1715,47 +1738,32 @@ private fun ConfiguracionSistemaTab() {
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     InfoRow("📱 Versión de la app",  ConfiguracionPlanta.VERSION_APP)
-                    InfoRow("🗄️ Base de datos",      ConfiguracionPlanta.VERSION_BD)
+                    InfoRow("🗄️ Datos",              "Servidor Laravel (compartido con la web)")
                     InfoRow("👨‍💻 Desarrollado por",   ConfiguracionPlanta.DESARROLLADOR)
                     InfoRow("🔑 Sistema",             "4bytes — Gestión Ecolácteos")
                 }
             }
         }
 
-        // ── Botón guardar ──────────────────────────────────────────────────
-        if (guardado) {
+        if (guardado || envio is EstadoEnvio.Error) {
             item {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.12f)), shape = RoundedCornerShape(8.dp)) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("✅", fontSize = 18.sp); Spacer(Modifier.width(8.dp))
-                        Text("Configuración guardada correctamente", style = MaterialTheme.typography.bodySmall, color = VerdeHuata, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Text(
+                    (envio as? EstadoEnvio.Exito)?.mensaje ?: (envio as? EstadoEnvio.Error)?.mensaje.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (guardado) VerdeHuata else MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
             }
-        }
-        item {
-            Button(
-                onClick = {
-                    ConfiguracionPlanta.nombre    = nombre.trim()
-                    ConfiguracionPlanta.slogan    = slogan.trim()
-                    ConfiguracionPlanta.ruc       = ruc.trim()
-                    ConfiguracionPlanta.direccion = direccion.trim()
-                    ConfiguracionPlanta.telefono  = telefono.trim()
-                    ConfiguracionPlanta.correo    = correo.trim()
-                    ConfiguracionPlanta.distrito  = distrito.trim()
-                    ConfiguracionPlanta.provincia = provincia.trim()
-                    ConfiguracionPlanta.region    = region.trim()
-                    ConfiguracionPlanta.litrosMinimosEntrega = litrosMin.toDoubleOrNull() ?: 0.0
-                    ConfiguracionPlanta.litrosMaximosEntrega = litrosMax.toDoubleOrNull() ?: 5000.0
-                    ConfiguracionPlanta.diasPagoCiclo        = diasCiclo.toIntOrNull() ?: 7
-                    guardado = true
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
-            ) { Text("Guardar configuración", fontWeight = FontWeight.Bold) }
         }
         item { Spacer(Modifier.height(16.dp)) }
     }
+}
+
+/** "12/10/2026" + "08:30" -> "2026-10-12T08:30" (formato que acepta Laravel). */
+private fun fechaHoraIso(fecha: String, hora: String): String? {
+    val partes = fecha.trim().split("/")
+    if (partes.size != 3) return null
+    return "${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}T${hora.trim().ifBlank { "00:00" }}"
 }
 
 @Composable

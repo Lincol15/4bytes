@@ -33,16 +33,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 
 private val VerdeHuata = Color(0xFF2E7D32)
 private val AzulGerente = Color(0xFF1A237E)
 
+/** Formatea un Double con 1 decimal — alternativa KMP a String.format("%.1f", x). */
+private fun Double.fmt1(): String {
+    val entero = toLong()
+    val decimal = ((this - entero) * 10).toLong().let { if (it < 0) -it else it }
+    return "$entero.$decimal"
+}
+
 @Composable
-fun AcopioGerenteTab(modifier: Modifier = Modifier) {
-    val registros = remember { DatosMock.registrosAcopio.toList() }
-    
+fun AcopioGerenteTab(
+    modifier: Modifier = Modifier,
+    viewModel: GerenteViewModel = viewModel { GerenteViewModel() }
+) {
+    // Recolecciones de los últimos 30 días, desde Laravel
+    val estado by viewModel.registros.collectAsStateWithLifecycle()
+    if (estado !is EstadoUi.Exito) {
+        CargaOError(estado, onReintentar = viewModel::cargar)
+        return
+    }
+    val registros = estado.datosOVacio()
+
     // Agrupar por acopiador
     val acopiadoresConRegistros = registros.groupBy { it.acopiador }
     
@@ -68,7 +88,7 @@ fun AcopioGerenteTab(modifier: Modifier = Modifier) {
                             color = Color.White
                         )
                         Text(
-                            "Vista de gerencia - Solo lectura",
+                            "Últimos 30 días · solo lectura",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(0.8f)
                         )
@@ -96,7 +116,7 @@ fun AcopioGerenteTab(modifier: Modifier = Modifier) {
                     )
                     EstadisticaCard(
                         titulo = "Total Litros",
-                        valor = String.format("%.1f L", registros.sumOf { it.litros }),
+                        valor = "${registros.sumOf { it.litros }.fmt1()} L",
                         icono = "🥛"
                     )
                 }
@@ -217,7 +237,7 @@ private fun AcopiadorGrupoCard(
                 // Total de litros
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        String.format("%.1f", totalLitros),
+                        totalLitros.fmt1(),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = VerdeHuata
@@ -245,8 +265,6 @@ private fun AcopiadorGrupoCard(
 
 @Composable
 private fun RegistroAcopioItem(registro: RegistroAcopio) {
-    val productor = DatosMock.productores
-        .find { it.idProductor == registro.idProductor }
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -263,7 +281,7 @@ private fun RegistroAcopioItem(registro: RegistroAcopio) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        productor?.nombreCompleto ?: "Productor desconocido",
+                        registro.nombreProductor ?: "Productor desconocido",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -323,7 +341,7 @@ private fun RegistroAcopioItem(registro: RegistroAcopio) {
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        String.format("%.1f", registro.litros),
+                        registro.litros.fmt1(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = VerdeHuata

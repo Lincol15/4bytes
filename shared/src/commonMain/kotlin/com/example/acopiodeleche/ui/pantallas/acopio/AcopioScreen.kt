@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,23 +16,39 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 
 @Composable
 fun AcopioScreen(
     onVolver: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: RecoleccionViewModel = viewModel { RecoleccionViewModel() }
 ) {
-    var registros by remember { mutableStateOf(DatosMock.registrosAcopio.toList()) }
+    val estadoRegistros by viewModel.registros.collectAsStateWithLifecycle()
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val registros = estadoRegistros.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    // Al confirmar el backend el registro, se cierra el formulario y se muestra la confirmación
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -58,23 +75,33 @@ fun AcopioScreen(
         }
 
         Button(
-            onClick = { mostrarFormulario = true },
+            onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) { Text("+ Registrar acopio") }
 
+        when (val actual = envio) {
+            is EstadoEnvio.Exito -> MensajeEnvio(actual.mensaje, Color(0xFF2E7D32), viewModel::limpiarEnvio)
+            is EstadoEnvio.Error -> MensajeEnvio(actual.mensaje, MaterialTheme.colorScheme.error, viewModel::limpiarEnvio)
+            else -> Unit
+        }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         if (mostrarFormulario) {
-            FormularioAcopio(
-                alGuardar = { nuevo ->
-                    registros = registros + nuevo
-                    DatosMock.registrosAcopio.add(nuevo)
-                    mostrarFormulario = false
-                },
-                alCancelar = { mostrarFormulario = false }
-            )
+            if (estadoProductores is EstadoUi.Exito) {
+                FormularioAcopio(
+                    productores = estadoProductores.datosOVacio(),
+                    enviando = envio == EstadoEnvio.Enviando,
+                    alGuardar = { nuevo -> viewModel.registrar(nuevo) },
+                    alCancelar = { mostrarFormulario = false }
+                )
+            } else {
+                CargaOError(estadoProductores, onReintentar = viewModel::cargar)
+            }
+        } else if (estadoRegistros !is EstadoUi.Exito) {
+            CargaOError(estadoRegistros, onReintentar = viewModel::cargar)
         } else {
             if (registros.isEmpty()) {
                 EstadoVacioAcopio()
@@ -90,6 +117,17 @@ fun AcopioScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MensajeEnvio(mensaje: String, color: Color, onCerrar: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(mensaje, color = color, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = onCerrar) { Text("✕") }
     }
 }
 

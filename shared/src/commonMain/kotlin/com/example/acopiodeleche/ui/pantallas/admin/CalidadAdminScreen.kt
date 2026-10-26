@@ -45,12 +45,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ControlCalidad
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.data.remote.dto.MOTIVOS_RECHAZO
+import com.example.acopiodeleche.domain.model.Productor
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.estado.fechaHoyPantalla
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.Sancion
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoSancion
-import kotlin.random.Random
 
 private val VerdeHuata  = Color(0xFF2E7D32)
 private val RojoAdmin   = Color(0xFFC62828)
@@ -109,8 +117,18 @@ fun CalidadAdminScreen(
 // ── ANÁLISIS — ADMIN EVALÚA ───────────────────────────────────────────────
 
 @Composable
-private fun AnalisisAdminTab(onIrSanciones: () -> Unit) {
-    var analisis by remember { mutableStateOf(DatosMock.analisisCalidad.toList()) }
+private fun AnalisisAdminTab(
+    onIrSanciones: () -> Unit,
+    viewModel: CalidadAdminViewModel = viewModel { CalidadAdminViewModel() }
+) {
+    // Análisis registrados por control de calidad (app o web), desde Laravel
+    val estadoAnalisis by viewModel.analisis.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    if (estadoAnalisis !is EstadoUi.Exito) {
+        CargaOError(estadoAnalisis, onReintentar = viewModel::cargar)
+        return
+    }
+    val analisis = estadoAnalisis.datosOVacio()
 
     val pendientes  = analisis.count { it.resultado == ResultadoCalidad.PENDIENTE }
     val observados  = analisis.count { it.resultado == ResultadoCalidad.OBSERVADO }
@@ -137,6 +155,9 @@ private fun AnalisisAdminTab(onIrSanciones: () -> Unit) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        (envio as? EstadoEnvio.Error)?.let { error ->
+            item { Text(error.mensaje, color = RojoAdmin, style = MaterialTheme.typography.bodySmall) }
+        }
         // Resumen
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -169,13 +190,12 @@ private fun AnalisisAdminTab(onIrSanciones: () -> Unit) {
                         )
                         Spacer(Modifier.height(4.dp))
                         productoresConProblemas.forEach { (idProd, regs) ->
-                            val prod = DatosMock.productores.find { it.idProductor == idProd }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    prod?.nombreCompleto ?: idProd,
+                                    regs.first().nombreProductor ?: idProd,
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -209,13 +229,7 @@ private fun AnalisisAdminTab(onIrSanciones: () -> Unit) {
         items(analisis) { cal ->
             TarjetaAnalisisAdmin(
                 analisis = cal,
-                onEvaluar = { nuevoResultado ->
-                    val idx = DatosMock.analisisCalidad.indexOfFirst { it.id == cal.id }
-                    if (idx != -1) {
-                        DatosMock.analisisCalidad[idx] = cal.copy(resultado = nuevoResultado)
-                        analisis = DatosMock.analisisCalidad.toList()
-                    }
-                }
+                onEvaluar = { nuevoResultado, motivo -> viewModel.evaluar(cal, nuevoResultado, motivo) }
             )
         }
     }
@@ -238,9 +252,8 @@ private fun ChipResumen(valor: String, etiqueta: String, color: Color, modifier:
 @Composable
 private fun TarjetaAnalisisAdmin(
     analisis: ControlCalidad,
-    onEvaluar: (ResultadoCalidad) -> Unit
+    onEvaluar: (ResultadoCalidad, String?) -> Unit
 ) {
-    val productor = DatosMock.productores.find { it.idProductor == analisis.idProductor }
     val colorResultado = when (analisis.resultado) {
         ResultadoCalidad.APTO      -> VerdeHuata
         ResultadoCalidad.NO_APTO   -> RojoAdmin
@@ -249,6 +262,7 @@ private fun TarjetaAnalisisAdmin(
     }
 
     var mostrarEvaluacion by remember { mutableStateOf(false) }
+    var eligiendoMotivo by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -261,7 +275,7 @@ private fun TarjetaAnalisisAdmin(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        productor?.nombreCompleto ?: "Productor",
+                        analisis.nombreProductor ?: "Productor",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -327,20 +341,32 @@ private fun TarjetaAnalisisAdmin(
                 Spacer(Modifier.height(4.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Button(
-                        onClick = { onEvaluar(ResultadoCalidad.APTO); mostrarEvaluacion = false },
+                        onClick = { onEvaluar(ResultadoCalidad.APTO, null); mostrarEvaluacion = false },
                         colors = ButtonDefaults.buttonColors(containerColor = VerdeHuata),
                         modifier = Modifier.weight(1f)
                     ) { Text("✅ Apto", style = MaterialTheme.typography.labelSmall) }
                     Button(
-                        onClick = { onEvaluar(ResultadoCalidad.OBSERVADO); mostrarEvaluacion = false },
+                        onClick = { onEvaluar(ResultadoCalidad.OBSERVADO, null); mostrarEvaluacion = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
                         modifier = Modifier.weight(1f)
                     ) { Text("👁 Observado", style = MaterialTheme.typography.labelSmall) }
                     Button(
-                        onClick = { onEvaluar(ResultadoCalidad.NO_APTO); mostrarEvaluacion = false },
+                        // Laravel exige el motivo del rechazo
+                        onClick = { eligiendoMotivo = true },
                         colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin),
                         modifier = Modifier.weight(1f)
                     ) { Text("❌ No apto", style = MaterialTheme.typography.labelSmall) }
+                }
+                if (eligiendoMotivo) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Motivo del rechazo:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    MOTIVOS_RECHAZO.forEach { (clave, etiqueta) ->
+                        TextButton(onClick = {
+                            onEvaluar(ResultadoCalidad.NO_APTO, clave)
+                            eligiendoMotivo = false
+                            mostrarEvaluacion = false
+                        }) { Text("• $etiqueta", color = RojoAdmin, style = MaterialTheme.typography.labelMedium) }
+                    }
                 }
             } else {
                 Spacer(Modifier.height(4.dp))
@@ -355,33 +381,30 @@ private fun TarjetaAnalisisAdmin(
 // ── SANCIONES ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun SancionesTab() {
-    var sanciones by remember { mutableStateOf(DatosMock.sanciones.toList()) }
+private fun SancionesTab(viewModel: CalidadAdminViewModel = viewModel { CalidadAdminViewModel() }) {
+    // Sanciones registradas en Laravel (las mismas que el módulo de sanciones de la web)
+    val estadoSanciones by viewModel.sanciones.collectAsStateWithLifecycle()
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val estadoAnalisis by viewModel.analisis.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val sanciones = estadoSanciones.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
 
     if (mostrarFormulario) {
         FormularioSancion(
-            alGuardar = { nueva ->
-                DatosMock.sanciones.add(nueva)
-                sanciones = DatosMock.sanciones.toList()
-                // Notificar al productor
-                val prod = DatosMock.productores.find { it.idProductor == nueva.idProductor }
-                DatosMock.notificaciones.add(
-                    com.example.acopiodeleche.domain.model.Notificacion(
-                        id = "n-san-${Random.nextInt(1000,9999)}",
-                        titulo = "${nueva.tipo.icono} ${nueva.tipo.etiqueta}",
-                        mensaje = nueva.descripcion,
-                        tipo = com.example.acopiodeleche.domain.model.TipoNotificacion.CALIDAD,
-                        fecha = nueva.fecha,
-                        hora = "08:00",
-                        leida = false,
-                        idDestinatario = nueva.idProductor
-                    )
-                )
-                mostrarFormulario = false
-            },
-            alCancelar = { mostrarFormulario = false }
+            productores = estadoProductores.datosOVacio(),
+            analisis = estadoAnalisis.datosOVacio(),
+            alGuardar = { nueva -> viewModel.registrarSancion(nueva) },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
         )
+    } else if (estadoSanciones !is EstadoUi.Exito) {
+        CargaOError(estadoSanciones, onReintentar = viewModel::cargar)
     } else {
         Column {
             Row(
@@ -395,7 +418,7 @@ private fun SancionesTab() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
-                    onClick = { mostrarFormulario = true },
+                    onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                     colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
                 ) { Text("+ Nueva sanción") }
             }
@@ -425,7 +448,6 @@ private fun SancionesTab() {
 
 @Composable
 private fun TarjetaSancion(sancion: Sancion) {
-    val productor = DatosMock.productores.find { it.idProductor == sancion.idProductor }
     val color = when (sancion.tipo) {
         TipoSancion.ADVERTENCIA         -> AmarilloAdv
         TipoSancion.SUSPENSION_TEMPORAL -> Color(0xFFE65100)
@@ -451,7 +473,7 @@ private fun TarjetaSancion(sancion: Sancion) {
                         color = color
                     )
                     Text(
-                        productor?.nombreCompleto ?: sancion.idProductor,
+                        sancion.nombreProductor ?: sancion.idProductor,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -486,20 +508,23 @@ private fun TarjetaSancion(sancion: Sancion) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FormularioSancion(
+    productores: List<Productor>,
+    analisis: List<ControlCalidad>,
     alGuardar: (Sancion) -> Unit,
-    alCancelar: () -> Unit
+    alCancelar: () -> Unit,
+    enviando: Boolean = false,
+    mensajeError: String? = null
 ) {
-    val productores = DatosMock.productores
     var productorSeleccionado by remember { mutableStateOf("") }
     var dropExpanded by remember { mutableStateOf(false) }
     var tipoSeleccionado by remember { mutableStateOf(TipoSancion.ADVERTENCIA) }
     var dropTipoExpanded by remember { mutableStateOf(false) }
     var motivo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
-    var fecha by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf(fechaHoyPantalla()) }
 
     val analisisProblemas = if (productorSeleccionado.isNotBlank())
-        DatosMock.analisisCalidad.count {
+        analisis.count {
             it.idProductor == productorSeleccionado &&
             (it.resultado == ResultadoCalidad.OBSERVADO || it.resultado == ResultadoCalidad.NO_APTO)
         } else 0
@@ -533,7 +558,7 @@ private fun FormularioSancion(
             )
             ExposedDropdownMenu(expanded = dropExpanded, onDismissRequest = { dropExpanded = false }) {
                 productores.forEach { p ->
-                    val prob = DatosMock.analisisCalidad.count {
+                    val prob = analisis.count {
                         it.idProductor == p.idProductor &&
                         (it.resultado == ResultadoCalidad.OBSERVADO || it.resultado == ResultadoCalidad.NO_APTO)
                     }
@@ -616,7 +641,7 @@ private fun FormularioSancion(
             onClick = {
                 alGuardar(
                     Sancion(
-                        id = "san-${Random.nextInt(1000, 9999)}",
+                        id = "",   // lo asigna el backend
                         idProductor = productorSeleccionado,
                         tipo = tipoSeleccionado,
                         motivo = motivo.trim(),
@@ -627,11 +652,14 @@ private fun FormularioSancion(
                     )
                 )
             },
-            enabled = formularioValido,
+            enabled = formularioValido && !enviando,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = RojoAdmin)
         ) {
-            Text("Emitir ${tipoSeleccionado.etiqueta}", fontWeight = FontWeight.Bold)
+            Text(if (enviando) "Registrando..." else "Emitir ${tipoSeleccionado.etiqueta}", fontWeight = FontWeight.Bold)
+        }
+        if (mensajeError != null) {
+            Text(mensajeError, color = RojoAdmin, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

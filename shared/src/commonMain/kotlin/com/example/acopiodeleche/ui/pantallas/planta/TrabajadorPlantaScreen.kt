@@ -54,13 +54,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.domain.model.InsumoPlanta
+import com.example.acopiodeleche.domain.model.ProductoPlanta
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.estado.fechaHoyPantalla
 import com.example.acopiodeleche.domain.model.LoteProduccion
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoProducto
 import com.example.acopiodeleche.domain.model.VentaSalida
 import com.example.acopiodeleche.ui.components.CampoFecha
-import kotlin.random.Random
 import kotlinx.coroutines.launch
 
 private val AzulPlanta        = Color(0xFF37474F)
@@ -75,15 +83,24 @@ private data class ItemMenuPlanta(val icono: String, val titulo: String, val ind
 private val MENU_PLANTA = listOf(
     ItemMenuPlanta("🏠", "Inicio",           0),
     ItemMenuPlanta("🧀", "Producción",       1),
-    ItemMenuPlanta("📦", "Ventas / Salidas", 2)
+    ItemMenuPlanta("📦", "Ventas / Salidas", 2),
+    ItemMenuPlanta("📥", "Recepción de leche", 3)
 )
 
-// ── Función helper para calcular stock ────────────────────────────────────
-private fun stockDisponible(lote: LoteProduccion): Double {
-    val vendido = DatosMock.ventasSalidas
-        .filter { it.idLote == lote.id }
-        .sumOf { it.cantidad }
-    return maxOf(0.0, lote.cantidadProducida - vendido)
+// ── Stock del lote: lo calcula Laravel a partir del inventario (entradas − salidas) ──
+private fun stockDisponible(lote: LoteProduccion): Double = maxOf(0.0, lote.stock ?: lote.cantidadProducida)
+
+@Composable
+private fun MensajePlanta(envio: EstadoEnvio, onCerrar: () -> Unit) {
+    val (texto, color) = when (envio) {
+        is EstadoEnvio.Exito -> envio.mensaje to VerdeHuata
+        is EstadoEnvio.Error -> envio.mensaje to RojoAlerta
+        else -> return
+    }
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(texto, color = color, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = onCerrar) { Text("✕") }
+    }
 }
 
 private fun formatearMonto(t: Double): String =
@@ -247,6 +264,7 @@ fun TrabajadorPlantaScreen(
                     0 -> InicioTrabajador()
                     1 -> ProduccionTab()
                     2 -> VentasTab()
+                    3 -> RecepcionPlantaScreen()
                 }
             }
         }
@@ -258,15 +276,21 @@ fun TrabajadorPlantaScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun InicioTrabajador() {
-    val lotes  = DatosMock.lotesProduccion
-    val ventas = DatosMock.ventasSalidas
+private fun InicioTrabajador(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+    val estadoLotes  by viewModel.lotes.collectAsStateWithLifecycle()
+    val estadoVentas by viewModel.ventas.collectAsStateWithLifecycle()
+    if (estadoLotes !is EstadoUi.Exito) {
+        CargaOError(estadoLotes, onReintentar = viewModel::cargar)
+        return
+    }
+    val lotes  = estadoLotes.datosOVacio()
+    val ventas = estadoVentas.datosOVacio()
 
     val stockTotalQueso  = lotes.filter { it.producto == TipoProducto.QUESO }.sumOf { stockDisponible(it) }
     val stockTotalYogur  = lotes.filter { it.producto == TipoProducto.YOGUR }.sumOf { stockDisponible(it) }
     val lotesConStock    = lotes.count { stockDisponible(it) > 0 }
     val totalVentasHoy   = ventas.sumOf { it.total }
-    val lotesPorVencer   = lotes.filter { !it.fechaVencimiento.isNullOrBlank() }
+    val lotesPorVencer   = lotes.filter { !it.fechaVencimiento.isNullOrBlank() && stockDisponible(it) > 0 }
 
     LazyColumn(
         contentPadding      = PaddingValues(16.dp),
@@ -335,7 +359,7 @@ private fun InicioTrabajador() {
                 }
             }
         } else {
-            items(lotes.takeLast(4).reversed()) { lote ->
+            items(lotes.take(4)) { lote ->
                 TarjetaLoteCompacta(lote)
             }
         }
@@ -393,47 +417,24 @@ private fun TarjetaLoteCompacta(lote: LoteProduccion) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProduccionTab() {
+private fun ProduccionTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
     var tabProd by remember { mutableStateOf(0) }
-    var jornadas by remember { mutableStateOf(DatosMock.jornadasProduccion.toList()) }
     var mostrarNuevaJornada by remember { mutableStateOf(false) }
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val estadoLotes by viewModel.lotes.collectAsStateWithLifecycle()
+
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito && mostrarNuevaJornada) {
+            mostrarNuevaJornada = false
+            tabProd = 2
+        }
+    }
 
     if (mostrarNuevaJornada) {
         NuevaJornadaForm(
-            alGuardar = { jornada, detalles ->
-                DatosMock.jornadasProduccion.add(jornada)
-                DatosMock.detallesProduccion.addAll(detalles)
-                // también crear LoteProduccion legacy para stock
-                detalles.forEach { det ->
-                    val receta = DatosMock.recetas.find { it.id == det.idReceta }
-                    if (receta != null) {
-                        val n = Random.nextInt(100, 999)
-                        val prefijo = when (receta.producto) {
-                            TipoProducto.QUESO       -> "Q"
-                            TipoProducto.YOGUR       -> "Y"
-                            TipoProducto.MANTEQUILLA -> "M"
-                            else                     -> "P"
-                        }
-                        val unidad = if (receta.producto == TipoProducto.YOGUR) "L" else "kg"
-                        DatosMock.lotesProduccion.add(
-                            LoteProduccion(
-                                id                = "lote-$n",
-                                codigoLote        = "$prefijo-2026-$n",
-                                producto          = receta.producto,
-                                litrosUsados      = det.litrosTotalesUsados,
-                                cantidadProducida = det.cantidadProducida,
-                                unidadMedida      = unidad,
-                                fecha             = jornada.fecha,
-                                idTrabajador      = jornada.idTrabajador,
-                                observacion       = jornada.observacion
-                            )
-                        )
-                    }
-                }
-                jornadas = DatosMock.jornadasProduccion.toList()
-                mostrarNuevaJornada = false
-            },
-            alCancelar = { mostrarNuevaJornada = false }
+            viewModel = viewModel,
+            alGuardar = { fecha, cantidades, observacion -> viewModel.registrarProduccion(fecha, cantidades, observacion) },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarNuevaJornada = false }
         )
         return
     }
@@ -444,6 +445,7 @@ private fun ProduccionTab() {
             Tab(selected = tabProd == 1, onClick = { tabProd = 1 }, text = { Text("➕ Producir") })
             Tab(selected = tabProd == 2, onClick = { tabProd = 2 }, text = { Text("📊 Historial") })
         }
+        MensajePlanta(envio, viewModel::limpiarEnvio)
         when (tabProd) {
             0 -> RecetasTab()
             1 -> {
@@ -461,14 +463,15 @@ private fun ProduccionTab() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Button(
-                            onClick  = { mostrarNuevaJornada = true },
+                            onClick  = { viewModel.limpiarEnvio(); mostrarNuevaJornada = true },
                             colors   = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion),
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("+ Nueva jornada de producción", fontWeight = FontWeight.Bold) }
                     }
                 }
             }
-            2 -> HistorialProduccionTab(jornadas)
+            2 -> if (estadoLotes is EstadoUi.Exito) HistorialProduccionTab(estadoLotes.datosOVacio())
+                 else CargaOError(estadoLotes, onReintentar = viewModel::cargar)
         }
     }
 }
@@ -477,28 +480,44 @@ private fun ProduccionTab() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecetasTab() {
-    var recetas         by remember { mutableStateOf(DatosMock.recetas.toList()) }
+private fun RecetasTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+    // Recetas del backend (las mismas que en el panel web de planta)
+    val estadoRecetas by viewModel.recetas.collectAsStateWithLifecycle()
+    val estadoProductos by viewModel.productos.collectAsStateWithLifecycle()
+    val estadoInsumos by viewModel.insumos.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val recetasConDetalle = estadoRecetas.datosOVacio()
+    val recetas = recetasConDetalle.map { it.first }
     var mostrarFormulario by remember { mutableStateOf(false) }
     var recetaDetalle   by remember { mutableStateOf<com.example.acopiodeleche.domain.model.Receta?>(null) }
 
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+    }
+
     if (mostrarFormulario) {
         FormularioReceta(
-            alGuardar = { receta, detalles ->
-                DatosMock.recetas.add(receta)
-                DatosMock.recetaDetalles.addAll(detalles)
-                recetas = DatosMock.recetas.toList()
-                mostrarFormulario = false
+            productos = estadoProductos.datosOVacio(),
+            catalogoInsumos = estadoInsumos.datosOVacio(),
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje,
+            alGuardar = { nombre, idProducto, descripcion, insumos ->
+                viewModel.registrarReceta(nombre, idProducto, descripcion, insumos)
             },
-            alCancelar = { mostrarFormulario = false }
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false }
         )
         return
     }
     if (recetaDetalle != null) {
         DetalleRecetaScreen(
             receta   = recetaDetalle!!,
+            insumos  = recetasConDetalle.firstOrNull { it.first.id == recetaDetalle!!.id }?.second.orEmpty(),
             onVolver = { recetaDetalle = null }
         )
+        return
+    }
+    if (estadoRecetas !is EstadoUi.Exito) {
+        CargaOError(estadoRecetas, onReintentar = viewModel::cargar)
         return
     }
 
@@ -509,7 +528,7 @@ private fun RecetasTab() {
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text("${recetas.size} recetas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = { mostrarFormulario = true }, colors = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion)) {
+            Button(onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true }, colors = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion)) {
                 Text("+ Nueva receta")
             }
         }
@@ -523,8 +542,7 @@ private fun RecetasTab() {
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(recetas) { receta ->
-                    val insumos = DatosMock.recetaDetalles.filter { it.idReceta == receta.id }
+                items(recetasConDetalle) { (receta, insumos) ->
                     Card(
                         modifier  = Modifier.fillMaxWidth().clickable { recetaDetalle = receta },
                         elevation = CardDefaults.cardElevation(2.dp)
@@ -535,7 +553,7 @@ private fun RecetasTab() {
                                 Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(receta.nombre, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text(receta.producto.etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(receta.nombreProducto ?: receta.producto.etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     if (!receta.descripcion.isNullOrBlank())
                                         Text(receta.descripcion, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -561,9 +579,9 @@ private fun RecetasTab() {
 @Composable
 private fun DetalleRecetaScreen(
     receta: com.example.acopiodeleche.domain.model.Receta,
+    insumos: List<com.example.acopiodeleche.domain.model.RecetaDetalle>,
     onVolver: () -> Unit
 ) {
-    val insumos = DatosMock.recetaDetalles.filter { it.idReceta == receta.id }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -611,22 +629,25 @@ private fun DetalleRecetaScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FormularioReceta(
-    alGuardar: (com.example.acopiodeleche.domain.model.Receta, List<com.example.acopiodeleche.domain.model.RecetaDetalle>) -> Unit,
+    productos: List<ProductoPlanta>,
+    catalogoInsumos: List<InsumoPlanta>,
+    enviando: Boolean,
+    mensajeError: String?,
+    alGuardar: (nombre: String, idProducto: String, descripcion: String?, insumos: Map<String, Double>) -> Unit,
     alCancelar: () -> Unit
 ) {
     var nombre           by remember { mutableStateOf("") }
     var descripcion      by remember { mutableStateOf("") }
-    var productoSel      by remember { mutableStateOf(TipoProducto.QUESO) }
+    var productoSel      by remember { mutableStateOf<ProductoPlanta?>(null) }
     var dropExpanded     by remember { mutableStateOf(false) }
-    var insumos          by remember { mutableStateOf(listOf<com.example.acopiodeleche.domain.model.RecetaDetalle>()) }
-    // campos para agregar insumo
-    var insumoNombre     by remember { mutableStateOf("") }
+    // insumo del catálogo -> cantidad por unidad producida
+    var insumos          by remember { mutableStateOf(listOf<Pair<InsumoPlanta, Double>>()) }
+    var insumoSel        by remember { mutableStateOf<InsumoPlanta?>(null) }
     var insumoCantidad   by remember { mutableStateOf("") }
-    var insumoUnidad     by remember { mutableStateOf("litros") }
-    var dropUnidadExp    by remember { mutableStateOf(false) }
-    val unidades         = listOf("litros", "gramos", "kg", "ml", "unidades")
+    var dropInsumoExp    by remember { mutableStateOf(false) }
 
-    val formularioValido = nombre.isNotBlank()
+    // Laravel exige producto del catálogo y al menos un insumo (la leche también es un insumo)
+    val formularioValido = nombre.isNotBlank() && productoSel != null && insumos.isNotEmpty()
 
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -641,82 +662,83 @@ private fun FormularioReceta(
         item {
             ExposedDropdownMenuBox(expanded = dropExpanded, onExpandedChange = { dropExpanded = it }) {
                 OutlinedTextField(
-                    value = "${productoSel.icono} ${productoSel.etiqueta}", onValueChange = {}, readOnly = true,
+                    value = productoSel?.let { "${it.tipo.icono} ${it.nombre}" } ?: "", onValueChange = {}, readOnly = true,
                     label = { Text("Producto final *") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(expanded = dropExpanded, onDismissRequest = { dropExpanded = false }) {
-                    TipoProducto.entries.forEach { t ->
-                        DropdownMenuItem(text = { Text("${t.icono} ${t.etiqueta}") }, onClick = { productoSel = t; dropExpanded = false })
+                    productos.forEach { p ->
+                        DropdownMenuItem(text = { Text("${p.tipo.icono} ${p.nombre} (${p.unidad})") }, onClick = { productoSel = p; dropExpanded = false })
                     }
                 }
             }
         }
         item {
-            OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Instrucciones") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         }
-        // Agregar insumos
         item {
             HorizontalDivider()
             Text("Insumos por unidad producida", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         }
-        items(insumos) { ins ->
+        items(insumos) { (ins, cantidad) ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("• ${ins.resumen}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                TextButton(onClick = { insumos = insumos.filter { it.id != ins.id } }) { Text("✕", color = RojoAlerta) }
+                Text("• ${ins.nombre}: $cantidad ${ins.unidad}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { insumos = insumos.filter { it.first.id != ins.id } }) { Text("✕", color = RojoAlerta) }
             }
         }
         item {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("+ Agregar insumo", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(value = insumoNombre, onValueChange = { insumoNombre = it }, label = { Text("Nombre del insumo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("+ Agregar insumo del almacén", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    ExposedDropdownMenuBox(expanded = dropInsumoExp, onExpandedChange = { dropInsumoExp = it }) {
                         OutlinedTextField(
-                            value = insumoCantidad, onValueChange = { insumoCantidad = it },
-                            label = { Text("Cantidad") }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(1f)
+                            value = insumoSel?.let { "${it.nombre} (${it.unidad})" } ?: "", onValueChange = {}, readOnly = true,
+                            label = { Text("Insumo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropInsumoExp) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
-                        ExposedDropdownMenuBox(expanded = dropUnidadExp, onExpandedChange = { dropUnidadExp = it }, modifier = Modifier.weight(1f)) {
-                            OutlinedTextField(value = insumoUnidad, onValueChange = {}, readOnly = true,
-                                label = { Text("Unidad") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropUnidadExp) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable))
-                            ExposedDropdownMenu(expanded = dropUnidadExp, onDismissRequest = { dropUnidadExp = false }) {
-                                unidades.forEach { u -> DropdownMenuItem(text = { Text(u) }, onClick = { insumoUnidad = u; dropUnidadExp = false }) }
+                        ExposedDropdownMenu(expanded = dropInsumoExp, onDismissRequest = { dropInsumoExp = false }) {
+                            catalogoInsumos.filter { c -> insumos.none { it.first.id == c.id } }.forEach { c ->
+                                DropdownMenuItem(
+                                    text = { Text("${if (c.esLeche) "🥛 " else ""}${c.nombre} (${c.unidad}) · stock ${c.stock}") },
+                                    onClick = { insumoSel = c; dropInsumoExp = false }
+                                )
                             }
                         }
                     }
+                    OutlinedTextField(
+                        value = insumoCantidad, onValueChange = { insumoCantidad = it },
+                        label = { Text("Cantidad por unidad") }, suffix = { Text(insumoSel?.unidad.orEmpty()) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Button(
                         onClick = {
-                            if (insumoNombre.isNotBlank() && insumoCantidad.toDoubleOrNull() != null) {
-                                val nuevo = com.example.acopiodeleche.domain.model.RecetaDetalle(
-                                    id = "rd-${Random.nextInt(100, 9999)}", idReceta = "",
-                                    insumo = insumoNombre.trim(), cantidad = insumoCantidad.toDouble(), unidadMedida = insumoUnidad
-                                )
-                                insumos = insumos + nuevo
-                                insumoNombre = ""; insumoCantidad = ""
+                            val ins = insumoSel
+                            val cant = insumoCantidad.toDoubleOrNull()
+                            if (ins != null && cant != null && cant > 0) {
+                                insumos = insumos + (ins to cant)
+                                insumoSel = null; insumoCantidad = ""
                             }
                         },
-                        enabled = insumoNombre.isNotBlank() && insumoCantidad.toDoubleOrNull() != null,
+                        enabled = insumoSel != null && (insumoCantidad.toDoubleOrNull() ?: 0.0) > 0,
                         colors  = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion),
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Agregar insumo") }
                 }
             }
         }
+        if (mensajeError != null) {
+            item { Text(mensajeError, color = RojoAlerta, style = MaterialTheme.typography.bodySmall) }
+        }
         item {
             Button(
                 onClick = {
-                    val id = "r-${Random.nextInt(100, 9999)}"
-                    val receta = com.example.acopiodeleche.domain.model.Receta(id = id, nombre = nombre.trim(), producto = productoSel, descripcion = descripcion.ifBlank { null })
-                    val dets   = insumos.mapIndexed { i, ins -> ins.copy(id = "rd-${id}-$i", idReceta = id) }
-                    alGuardar(receta, dets)
+                    alGuardar(nombre.trim(), productoSel!!.id, descripcion.ifBlank { null }, insumos.associate { it.first.id to it.second })
                 },
-                enabled  = formularioValido,
+                enabled  = formularioValido && !enviando,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion)
-            ) { Text("Guardar receta", fontWeight = FontWeight.Bold) }
+            ) { Text(if (enviando) "Guardando..." else "Guardar receta", fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -726,13 +748,18 @@ private fun FormularioReceta(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NuevaJornadaForm(
-    alGuardar: (com.example.acopiodeleche.domain.model.ProduccionJornada, List<com.example.acopiodeleche.domain.model.ProduccionDetalle>) -> Unit,
+    viewModel: PlantaViewModel,
+    alGuardar: (fecha: String, cantidadesPorReceta: Map<String, Double>, observacion: String?) -> Unit,
     alCancelar: () -> Unit
 ) {
-    val recetasDisponibles = DatosMock.recetas.filter { it.activa }
+    val estadoRecetas by viewModel.recetas.collectAsStateWithLifecycle()
+    val envio by viewModel.envio.collectAsStateWithLifecycle()
+    val recetasConDetalle = estadoRecetas.datosOVacio().filter { it.first.activa }
+    val recetasDisponibles = recetasConDetalle.map { it.first }
+    val detallesPorReceta = recetasConDetalle.associate { it.first.id to it.second }
     // Map recetaId -> cantidad a producir
     var cantidades   by remember { mutableStateOf(mapOf<String, String>()) }
-    var fecha        by remember { mutableStateOf("") }
+    var fecha        by remember { mutableStateOf(fechaHoyPantalla()) }
     var observacion  by remember { mutableStateOf("") }
 
     // Calcular insumos totales
@@ -741,7 +768,7 @@ private fun NuevaJornadaForm(
         val mapa = mutableMapOf<String, Pair<Double, String>>()
         cantidades.forEach { (idReceta, cantStr) ->
             val cant = cantStr.toDoubleOrNull() ?: 0.0
-            val insumos = DatosMock.recetaDetalles.filter { it.idReceta == idReceta }
+            val insumos = detallesPorReceta[idReceta].orEmpty()
             insumos.forEach { ins ->
                 val key = "${ins.insumo}|${ins.unidadMedida}"
                 val prev = mapa[key] ?: (0.0 to ins.unidadMedida)
@@ -764,7 +791,11 @@ private fun NuevaJornadaForm(
         item { CampoFecha(value = fecha, onValueChange = { fecha = it }, label = "Fecha de producción *", colorPrimario = NaranjaProduccion, modifier = Modifier.fillMaxWidth()) }
 
         // Recetas con campo de cantidad
-        item { Text("¿Qué vas a producir hoy?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+        item {
+            Text("¿Qué vas a producir hoy?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("La leche se toma de las entregas recibidas más antiguas y los insumos se descuentan del almacén.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (recetasDisponibles.isEmpty()) {
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RojoAlerta.copy(0.08f))) {
@@ -783,7 +814,7 @@ private fun NuevaJornadaForm(
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(receta.nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text(receta.producto.etiqueta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(receta.nombreProducto ?: receta.producto.etiqueta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         OutlinedTextField(
                             value          = cant,
@@ -814,7 +845,7 @@ private fun NuevaJornadaForm(
                         resumenInsumos.forEach { ins ->
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("• ${ins.nombre}", style = MaterialTheme.typography.bodySmall)
-                                Text("${"%.2f".format(ins.total)} ${ins.unidad}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = NaranjaProduccion)
+                                Text("${(kotlin.math.round(ins.total * 100) / 100)} ${ins.unidad}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = NaranjaProduccion)
                             }
                         }
                     }
@@ -826,28 +857,18 @@ private fun NuevaJornadaForm(
         item {
             Button(
                 onClick = {
-                    val jornadaId = "jor-${Random.nextInt(1000, 9999)}"
-                    val jornada   = com.example.acopiodeleche.domain.model.ProduccionJornada(
-                        id = jornadaId, fecha = fecha.trim(),
-                        idTrabajador = SesionActual.usuario?.id ?: "",
-                        observacion  = observacion.ifBlank { null }
-                    )
-                    val detalles = cantidades.mapNotNull { (idReceta, cantStr) ->
-                        val cant = cantStr.toDoubleOrNull() ?: 0.0
-                        if (cant <= 0) return@mapNotNull null
-                        val insumos = DatosMock.recetaDetalles.filter { it.idReceta == idReceta }
-                        val litros  = insumos.filter { it.unidadMedida == "litros" }.sumOf { it.cantidad * cant }
-                        com.example.acopiodeleche.domain.model.ProduccionDetalle(
-                            id = "det-${Random.nextInt(1000, 9999)}", idJornada = jornadaId,
-                            idReceta = idReceta, cantidadProducida = cant, litrosTotalesUsados = litros
-                        )
-                    }
-                    alGuardar(jornada, detalles)
+                    val unidades = cantidades.mapNotNull { (idReceta, cantStr) ->
+                        cantStr.toDoubleOrNull()?.takeIf { it > 0 }?.let { idReceta to it }
+                    }.toMap()
+                    alGuardar(fecha.trim(), unidades, observacion)
                 },
-                enabled  = formularioValido,
+                enabled  = formularioValido && envio != EstadoEnvio.Enviando,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = NaranjaProduccion)
-            ) { Text("Registrar jornada de producción", fontWeight = FontWeight.Bold) }
+            ) { Text(if (envio == EstadoEnvio.Enviando) "Registrando..." else "Registrar jornada de producción", fontWeight = FontWeight.Bold) }
+        }
+        (envio as? EstadoEnvio.Error)?.let { error ->
+            item { Text(error.mensaje, color = RojoAlerta, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
@@ -855,8 +876,8 @@ private fun NuevaJornadaForm(
 // ── Historial de jornadas ─────────────────────────────────────────────────
 
 @Composable
-private fun HistorialProduccionTab(jornadas: List<com.example.acopiodeleche.domain.model.ProduccionJornada>) {
-    if (jornadas.isEmpty()) {
+private fun HistorialProduccionTab(lotes: List<LoteProduccion>) {
+    if (lotes.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("📊", fontSize = 48.sp); Spacer(Modifier.height(8.dp))
@@ -866,34 +887,33 @@ private fun HistorialProduccionTab(jornadas: List<com.example.acopiodeleche.doma
         }
         return
     }
+    // Cada jornada = lotes producidos en la misma fecha
+    val jornadas = lotes.groupBy { it.fecha }.toList()
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Text("${jornadas.size} jornadas registradas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
-        items(jornadas.reversed()) { jornada ->
-            val detalles   = DatosMock.detallesProduccion.filter { it.idJornada == jornada.id }
-            val litrosTot  = detalles.sumOf { it.litrosTotalesUsados }
+        items(jornadas) { (fecha, lotesDia) ->
+            val litrosTot = lotesDia.sumOf { it.litrosUsados }
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text("🗓️ ${jornada.fecha}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            if (!jornada.observacion.isNullOrBlank())
-                                Text("📝 ${jornada.observacion}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("🗓️ $fecha", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            lotesDia.firstNotNullOfOrNull { it.observacion?.takeIf { o -> o.isNotBlank() } }?.let {
+                                Text("📝 $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("${"%.1f".format(litrosTot)} L", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = NaranjaProduccion)
+                            Text("$litrosTot L", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = NaranjaProduccion)
                             Text("leche usada", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    if (detalles.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(4.dp))
-                        detalles.forEach { det ->
-                            val receta = DatosMock.recetas.find { it.id == det.idReceta }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("  ${receta?.icono ?: "📦"} ${receta?.nombre ?: "Receta"}", style = MaterialTheme.typography.labelSmall)
-                                Text("${det.cantidadProducida.toLong()} unid · ${"%.1f".format(det.litrosTotalesUsados)} L", style = MaterialTheme.typography.labelSmall, color = NaranjaProduccion, fontWeight = FontWeight.Bold)
-                            }
+                    Spacer(Modifier.height(6.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(4.dp))
+                    lotesDia.forEach { lote ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("  ${lote.producto.icono} ${lote.nombreProducto ?: lote.producto.etiqueta} · ${lote.codigoLote}", style = MaterialTheme.typography.labelSmall)
+                            Text("${lote.cantidadFormateada} · ${lote.litrosUsados} L", style = MaterialTheme.typography.labelSmall, color = NaranjaProduccion, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -922,19 +942,29 @@ private fun FiltroChipPlanta(label: String, seleccionado: Boolean, onClick: () -
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VentasTab() {
+private fun VentasTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
     var tabVentas        by remember { mutableStateOf(0) }
-    var ventas           by remember { mutableStateOf(DatosMock.ventasSalidas.toList()) }
+    val estadoVentas     by viewModel.ventas.collectAsStateWithLifecycle()
+    val estadoLotes      by viewModel.lotes.collectAsStateWithLifecycle()
+    val envio            by viewModel.envio.collectAsStateWithLifecycle()
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito && mostrarFormulario) {
+            mostrarFormulario = false
+            tabVentas = 2
+        }
+    }
 
     if (mostrarFormulario) {
         FormularioVenta(
-            alGuardar = { nueva ->
-                DatosMock.ventasSalidas.add(nueva)
-                ventas = DatosMock.ventasSalidas.toList()
-                mostrarFormulario = false
+            lotesDisponibles = estadoLotes.datosOVacio(),
+            enviando = envio == EstadoEnvio.Enviando,
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje,
+            alGuardar = { lote, cliente, cantidad, precio, fecha, observacion ->
+                viewModel.registrarVenta(lote, cliente, cantidad, precio, fecha, observacion)
             },
-            alCancelar = { mostrarFormulario = false }
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false }
         )
         return
     }
@@ -945,8 +975,10 @@ private fun VentasTab() {
             Tab(selected = tabVentas == 1, onClick = { tabVentas = 1 }, text = { Text("+ Venta") })
             Tab(selected = tabVentas == 2, onClick = { tabVentas = 2 }, text = { Text("📋 Historial") })
         }
+        MensajePlanta(envio, viewModel::limpiarEnvio)
         when (tabVentas) {
-            0 -> StockTab()
+            0 -> if (estadoLotes is EstadoUi.Exito) StockTab(estadoLotes.datosOVacio())
+                 else CargaOError(estadoLotes, onReintentar = viewModel::cargar)
             1 -> {
                 Box(
                     modifier            = Modifier.fillMaxSize(),
@@ -964,7 +996,7 @@ private fun VentasTab() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Button(
-                            onClick = { mostrarFormulario = true },
+                            onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
                             colors  = ButtonDefaults.buttonColors(containerColor = VerdeHuata),
                             modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()
                         ) {
@@ -973,7 +1005,8 @@ private fun VentasTab() {
                     }
                 }
             }
-            2 -> HistorialVentasTab(ventas)
+            2 -> if (estadoVentas is EstadoUi.Exito) HistorialVentasTab(estadoVentas.datosOVacio())
+                 else CargaOError(estadoVentas, onReintentar = viewModel::cargar)
         }
     }
 }
@@ -981,9 +1014,7 @@ private fun VentasTab() {
 // ── Stock ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StockTab() {
-    val lotes = DatosMock.lotesProduccion
-
+private fun StockTab(lotes: List<LoteProduccion>) {
     if (lotes.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1009,7 +1040,7 @@ private fun StockTab() {
     ) {
         item {
             Text("Stock disponible", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Calculado automáticamente (producido − vendido)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Según el inventario del servidor (producido − vendido)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // Resumen por producto
@@ -1037,7 +1068,7 @@ private fun StockTab() {
             Text("Detalle por lote", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         }
 
-        items(lotes.reversed()) { lote ->
+        items(lotes) { lote ->
             val stock    = stockDisponible(lote)
             val vendido  = lote.cantidadProducida - stock
             val progreso = if (lote.cantidadProducida > 0) (stock / lote.cantidadProducida).toFloat().coerceIn(0f, 1f) else 0f
@@ -1059,7 +1090,7 @@ private fun StockTab() {
                             Spacer(Modifier.width(10.dp))
                             Column {
                                 Text(lote.codigoLote, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                Text(lote.fecha, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${lote.nombreProducto ?: lote.producto.etiqueta} · ${lote.fecha}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         Column(horizontalAlignment = Alignment.End) {
@@ -1115,7 +1146,7 @@ private fun HistorialVentasTab(ventas: List<VentaSalida>) {
             ) {
                 Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("Total acumulado", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Total acumulado (sin IGV)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(formatearMonto(totalGeneral), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = VerdeHuata)
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -1125,7 +1156,7 @@ private fun HistorialVentasTab(ventas: List<VentaSalida>) {
                 }
             }
         }
-        items(ventas.reversed()) { venta -> TarjetaVenta(venta) }
+        items(ventas) { venta -> TarjetaVenta(venta) }
     }
 }
 
@@ -1146,8 +1177,8 @@ private fun TarjetaVenta(venta: VentaSalida) {
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(venta.cliente, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        Text("${venta.producto.etiqueta} · ${venta.cantidadFormateada}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(venta.fecha, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${venta.nombreProducto ?: venta.producto.etiqueta} · ${venta.cantidadFormateada}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${venta.fecha}${venta.codigoFactura?.let { " · $it" }.orEmpty()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -1167,14 +1198,20 @@ private fun TarjetaVenta(venta: VentaSalida) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FormularioVenta(alGuardar: (VentaSalida) -> Unit, alCancelar: () -> Unit) {
-    val lotes            = DatosMock.lotesProduccion.filter { stockDisponible(it) > 0 }
+private fun FormularioVenta(
+    lotesDisponibles: List<LoteProduccion>,
+    enviando: Boolean,
+    mensajeError: String?,
+    alGuardar: (lote: LoteProduccion, cliente: String, cantidad: Double, precio: Double, fecha: String, observacion: String?) -> Unit,
+    alCancelar: () -> Unit
+) {
+    val lotes            = lotesDisponibles.filter { stockDisponible(it) > 0 }
     var loteSeleccionado by remember { mutableStateOf<LoteProduccion?>(null) }
     var dropLoteExpanded by remember { mutableStateOf(false) }
     var cliente          by remember { mutableStateOf("") }
     var cantidad         by remember { mutableStateOf("") }
     var precio           by remember { mutableStateOf("") }
-    var fecha            by remember { mutableStateOf("") }
+    var fecha            by remember { mutableStateOf(fechaHoyPantalla()) }
     var observacion      by remember { mutableStateOf("") }
 
     val stockMax      = loteSeleccionado?.let { stockDisponible(it) } ?: 0.0
@@ -1294,7 +1331,7 @@ private fun FormularioVenta(alGuardar: (VentaSalida) -> Unit, alCancelar: () -> 
                     colors   = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.1f))
                 ) {
                     Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total a cobrar:", style = MaterialTheme.typography.bodyMedium)
+                        Text("Subtotal (+ IGV en la factura):", style = MaterialTheme.typography.bodyMedium)
                         Text(formatearMonto(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = VerdeHuata)
                     }
                 }
@@ -1311,24 +1348,17 @@ private fun FormularioVenta(alGuardar: (VentaSalida) -> Unit, alCancelar: () -> 
             Button(
                 onClick = {
                     alGuardar(
-                        VentaSalida(
-                            id              = "venta-${Random.nextInt(1000, 9999)}",
-                            idLote          = loteSeleccionado!!.id,
-                            producto        = loteSeleccionado!!.producto,
-                            cliente         = cliente.trim(),
-                            cantidad        = cantidad.toDoubleOrNull() ?: 0.0,
-                            unidadMedida    = loteSeleccionado!!.unidadMedida,
-                            precioPorUnidad = precio.toDoubleOrNull() ?: 0.0,
-                            fecha           = fecha.trim(),
-                            idTrabajador    = SesionActual.usuario?.id ?: "",
-                            observacion     = observacion.ifBlank { null }
-                        )
+                        loteSeleccionado!!, cliente.trim(), cantidad.toDoubleOrNull() ?: 0.0,
+                        precio.toDoubleOrNull() ?: 0.0, fecha.trim(), observacion.ifBlank { null }
                     )
                 },
-                enabled  = formularioValido,
+                enabled  = formularioValido && !enviando,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = VerdeHuata)
-            ) { Text("Guardar venta / despacho", fontWeight = FontWeight.Bold) }
+            ) { Text(if (enviando) "Guardando..." else "Guardar venta / despacho", fontWeight = FontWeight.Bold) }
+        }
+        if (mensajeError != null) {
+            item { Text(mensajeError, color = RojoAlerta, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }

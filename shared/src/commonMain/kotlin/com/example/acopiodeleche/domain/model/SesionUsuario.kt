@@ -6,12 +6,12 @@ package com.example.acopiodeleche.domain.model
  */
 data class SesionUsuario(
     val usuario: Usuario,
-    val token: String = ""          // para uso futuro con JWT/backend
+    val token: String = ""          // token Bearer de Laravel Sanctum
 )
 
 /**
  * Singleton que mantiene la sesión activa en memoria.
- * En fase de BD se reemplazará por DataStore/SharedPreferences.
+ * El token no se persiste: al cerrar la app se vuelve a iniciar sesión.
  */
 object SesionActual {
     var sesion: SesionUsuario? = null
@@ -20,8 +20,9 @@ object SesionActual {
     val rol: Rol? get() = sesion?.usuario?.rol
     val estaLogueado: Boolean get() = sesion != null
 
-    fun iniciar(usuario: Usuario) {
-        sesion = SesionUsuario(usuario)
+    /** Inicia o actualiza la sesión; si no se indica token, conserva el actual. */
+    fun iniciar(usuario: Usuario, token: String = sesion?.token.orEmpty()) {
+        sesion = SesionUsuario(usuario, token)
     }
 
     fun cerrar() {

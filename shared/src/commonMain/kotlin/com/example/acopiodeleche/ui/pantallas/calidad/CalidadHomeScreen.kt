@@ -49,7 +49,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ControlCalidad
-import com.example.acopiodeleche.domain.model.DatosMock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.acopiodeleche.ui.estado.CargaOError
+import com.example.acopiodeleche.ui.estado.EstadoEnvio
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.domain.model.OrigenDatos
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.ResultadoCalidad
@@ -59,7 +65,6 @@ import com.example.acopiodeleche.ui.components.FechaData
 import com.example.acopiodeleche.ui.components.HoraData
 import com.example.acopiodeleche.ui.components.ImagenPickerConOCR
 import com.example.acopiodeleche.ui.components.MostrarImagenTicket
-import kotlin.random.Random
 
 private val AzulCalidad = Color(0xFF0277BD)
 private val VerdeHuata  = Color(0xFF2E7D32)
@@ -68,12 +73,20 @@ private val VerdeHuata  = Color(0xFF2E7D32)
 @Composable
 fun CalidadHomeScreen(
     onCerrarSesion: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: CalidadViewModel = viewModel { CalidadViewModel() }
 ) {
     val usuario   = SesionActual.usuario
     var tabActual by remember { mutableStateOf(0) }
     val tabs      = listOf("Nuevo análisis", "Historial")
-    val analisis  = remember { mutableStateOf(DatosMock.analisisCalidad) }
+    val estadoAnalisis    by viewModel.analisis.collectAsStateWithLifecycle()
+    val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
+    val envio             by viewModel.envio.collectAsStateWithLifecycle()
+
+    // Al confirmar Laravel el registro, se pasa al historial
+    LaunchedEffect(envio) {
+        if (envio is EstadoEnvio.Exito) tabActual = 1
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         Box(
@@ -98,13 +111,28 @@ fun CalidadHomeScreen(
                 Tab(selected = tabActual == i, onClick = { tabActual = i }, text = { Text(t) })
             }
         }
+        when (val actual = envio) {
+            is EstadoEnvio.Exito -> Text(actual.mensaje, color = AzulCalidad, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).clickable { viewModel.limpiarEnvio() })
+            is EstadoEnvio.Error -> Text(actual.mensaje, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).clickable { viewModel.limpiarEnvio() })
+            else -> Unit
+        }
         when (tabActual) {
-            0 -> FormularioAnalisis(alGuardar = { nuevo ->
-                DatosMock.analisisCalidad.add(nuevo)
-                analisis.value = DatosMock.analisisCalidad
-                tabActual = 1
-            })
-            1 -> HistorialCalidad(analisis = analisis.value)
+            0 -> if (estadoProductores is EstadoUi.Exito) {
+                FormularioAnalisis(
+                    productoresDisponibles = estadoProductores.datosOVacio(),
+                    enviando = envio == EstadoEnvio.Enviando,
+                    alGuardar = { nuevo -> viewModel.registrar(nuevo) }
+                )
+            } else {
+                CargaOError(estadoProductores, onReintentar = viewModel::cargar)
+            }
+            1 -> if (estadoAnalisis is EstadoUi.Exito) {
+                HistorialCalidad(analisis = estadoAnalisis.datosOVacio())
+            } else {
+                CargaOError(estadoAnalisis, onReintentar = viewModel::cargar)
+            }
         }
     }
 }
@@ -115,8 +143,12 @@ fun CalidadHomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
-    val productores = DatosMock.productores.filter { it.estado }
+private fun FormularioAnalisis(
+    productoresDisponibles: List<Productor>,
+    enviando: Boolean,
+    alGuardar: (ControlCalidad) -> Unit
+) {
+    val productores = productoresDisponibles.filter { it.estado }
 
     var productorSeleccionado by remember { mutableStateOf<Productor?>(null) }
     var dropExpanded          by remember { mutableStateOf(false) }
@@ -318,7 +350,7 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
             )
         }
         item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Grasa (%)", grasa, { grasa = it }, Modifier.weight(1f)); CampoNum("SNG (%)", sng, { sng = it }, Modifier.weight(1f)) } }
-        item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Densidad", densidad, { densidad = it }, Modifier.weight(1f)); CampoNum("Proteína (%)", proteina, { proteina = it }, Modifier.weight(1f)) } }
+        item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Densidad (g/mL)", densidad, { densidad = it }, Modifier.weight(1f)); CampoNum("Proteína (%)", proteina, { proteina = it }, Modifier.weight(1f)) } }
         item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Lactosa (%)", lactosa, { lactosa = it }, Modifier.weight(1f)); CampoNum("Sales (%)", sales, { sales = it }, Modifier.weight(1f)) } }
         item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Total sólidos (%)", totalSolidos, { totalSolidos = it }, Modifier.weight(1f)); CampoNum("Agua añadida (%)", aguaAnadida, { aguaAnadida = it }, Modifier.weight(1f)) } }
         item { Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) { CampoNum("Punto cong. (°C)", puntoCongel, { puntoCongel = it }, Modifier.weight(1f)); CampoNum("pH", ph, { ph = it }, Modifier.weight(1f)) } }
@@ -329,8 +361,8 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
             Button(
                 onClick = {
                     alGuardar(ControlCalidad(
-                        id                = "cal-${Random.nextInt(1000, 9999)}",
-                        codigoAnalisis    = "LAC-${Random.nextInt(100, 999)}",
+                        id                = "",   // lo asigna el backend
+                        codigoAnalisis    = "",   // Laravel genera el código de muestra
                         idProductor       = productorSeleccionado!!.idProductor,
                         fecha             = FechaData.hoy().formateada(),
                         hora              = HoraData.ahora().formateada(),
@@ -351,10 +383,10 @@ private fun FormularioAnalisis(alGuardar: (ControlCalidad) -> Unit) {
                         idUsuarioAnalisis = SesionActual.usuario?.id ?: ""
                     ))
                 },
-                enabled  = formularioValido,
+                enabled  = formularioValido && !enviando,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = AzulCalidad)
-            ) { Text("Guardar análisis", fontWeight = FontWeight.Bold) }
+            ) { Text(if (enviando) "Guardando..." else "Guardar análisis", fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -380,13 +412,12 @@ private fun HistorialCalidad(analisis: List<ControlCalidad>) {
         item {
             Text("${analisis.size} análisis registrados", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         }
-        items(analisis.reversed()) { cal ->
-            val productor = DatosMock.productores.find { it.idProductor == cal.idProductor }
+        items(analisis) { cal ->
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(productor?.nombreCompleto ?: "Productor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(cal.nombreProductor ?: "Productor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Text("${cal.fecha}  ${cal.hora}  ·  ${cal.codigoAnalisis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val origenLabel = when (cal.origenDatos) {
                                 OrigenDatos.OCR           -> "📷 Desde ticket"

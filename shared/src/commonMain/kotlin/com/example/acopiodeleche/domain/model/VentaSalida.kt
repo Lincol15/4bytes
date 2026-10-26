@@ -16,7 +16,9 @@ data class VentaSalida(
     val precioPorUnidad: Double,        // precio por kg/L/unidad
     val fecha: String,                  // "dd/MM/yyyy"
     val idTrabajador: String,
-    val observacion: String? = null
+    val observacion: String? = null,
+    val codigoFactura: String? = null,   // número de venta del backend (el IGV se suma en la factura)
+    val nombreProducto: String? = null
 ) {
     val total: Double
         get() = cantidad * precioPorUnidad
