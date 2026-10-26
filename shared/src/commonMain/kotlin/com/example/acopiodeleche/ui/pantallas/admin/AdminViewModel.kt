@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.AdminRepository
 import com.example.acopiodeleche.data.repository.ProductorRepository
@@ -26,8 +25,8 @@ import kotlinx.datetime.todayIn
 
 /** Panel del administrador: resumen, usuarios, avisos y ajustes de planta leídos de Laravel. */
 class AdminViewModel(
-    private val repositorio: AdminRepository = AppContainer.adminRepository,
-    private val recoleccionRepository: RecoleccionRepository = AppContainer.recoleccionRepository
+    private val repositorio: AdminRepository,
+    private val recoleccionRepository: RecoleccionRepository
 ) : ViewModel() {
 
     private val _resumen = MutableStateFlow<EstadoUi<ResumenPanel>>(EstadoUi.Cargando)
@@ -104,8 +103,8 @@ class AdminViewModel(
 /** Detalle de un acopiador para el administrador: entregas de hoy, asignación y vehículo. */
 class AcopiadorAdminViewModel(
     private val acopiador: Usuario,
-    private val repositorio: AdminRepository = AppContainer.adminRepository,
-    private val productorRepository: ProductorRepository = AppContainer.productorRepository
+    private val repositorio: AdminRepository,
+    private val productorRepository: ProductorRepository
 ) : ViewModel() {
 
     private val _entregasHoy = MutableStateFlow<EstadoUi<List<RegistroAcopio>>>(EstadoUi.Cargando)

@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.productor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.QuejaRepository
 import com.example.acopiodeleche.domain.model.EstadoQueja
@@ -17,7 +16,7 @@ import kotlinx.coroutines.launch
 
 /** Quejas: el productor ve y envía las suyas; el administrador ve todas y responde. */
 class QuejasViewModel(
-    private val repositorio: QuejaRepository = AppContainer.quejaRepository
+    private val repositorio: QuejaRepository
 ) : ViewModel() {
 
     private val _quejas = MutableStateFlow<EstadoUi<List<Queja>>>(EstadoUi.Cargando)

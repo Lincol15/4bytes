@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.planta
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.RecoleccionRepository
 import com.example.acopiodeleche.domain.model.RegistroAcopio
@@ -16,7 +15,7 @@ import kotlinx.coroutines.launch
 
 /** Entregas "en tránsito" y registro de su recepción en planta. */
 class RecepcionPlantaViewModel(
-    private val repositorio: RecoleccionRepository = AppContainer.recoleccionRepository
+    private val repositorio: RecoleccionRepository
 ) : ViewModel() {
 
     private val _pendientes = MutableStateFlow<EstadoUi<List<RegistroAcopio>>>(EstadoUi.Cargando)

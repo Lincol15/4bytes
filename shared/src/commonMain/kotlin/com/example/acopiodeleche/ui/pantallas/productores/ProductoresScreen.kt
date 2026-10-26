@@ -1,5 +1,6 @@
 package com.example.acopiodeleche.ui.pantallas.productores
 
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,44 +42,74 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
 import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeProductor = Color(0xFF1B5E20)
-private val VerdeClaro     = Color(0xFF2E7D32)
+private val VerdeProductor = HuataColores.VerdeOscuro
+private val VerdeClaro     = HuataColores.Verde
 
 @Composable
 fun ProductoresScreen(
     soloLectura: Boolean = false,
     onVolver: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    viewModel: ProductoresViewModel = viewModel { ProductoresViewModel() }
+    viewModel: ProductoresViewModel = koinViewModel()
 ) {
     // Padrón de productores leído desde Laravel (mismos datos que la web)
     val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
     val productores = estadoProductores.datosOVacio()
     var mostrarFormulario by remember { mutableStateOf(false) }
+    var productorEditando by remember { mutableStateOf<Productor?>(null) }
+    var productorAEliminar by remember { mutableStateOf<Productor?>(null) }
     var busqueda          by remember { mutableStateOf("") }
     var filtroComunidad   by remember { mutableStateOf("") }
     var filtroEstado      by remember { mutableStateOf("Todos") }
 
     LaunchedEffect(envio) {
-        if (envio is EstadoEnvio.Exito) mostrarFormulario = false
+        if (envio is EstadoEnvio.Exito) {
+            mostrarFormulario = false
+            productorEditando = null
+        }
     }
 
-    if (mostrarFormulario) {
+    if (mostrarFormulario || productorEditando != null) {
+        val editando = productorEditando
         FormularioProductor(
-            alGuardar = { nuevo, correo, contrasena -> viewModel.registrar(nuevo, correo, contrasena) },
-            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false },
+            alGuardar = { datos, correo, contrasena ->
+                if (editando != null) viewModel.actualizar(datos) else viewModel.registrar(datos, correo, contrasena)
+            },
+            alCancelar = { viewModel.limpiarEnvio(); mostrarFormulario = false; productorEditando = null },
             enviando = envio == EstadoEnvio.Enviando,
-            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje
+            mensajeError = (envio as? EstadoEnvio.Error)?.mensaje,
+            productorEditar = editando
         )
         return
+    }
+
+    productorAEliminar?.let { productor ->
+        AlertDialog(
+            onDismissRequest = { productorAEliminar = null },
+            title = { Text("¿Eliminar a ${productor.nombreCompleto}?") },
+            text = {
+                Text(
+                    "También se elimina su cuenta de acceso. Solo es posible si no tiene entregas, " +
+                        "pagos ni sanciones; si los tiene, desactívelo."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.eliminar(productor); productorAEliminar = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = HuataColores.Rojo)
+                ) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { productorAEliminar = null }) { Text("Cancelar") } }
+        )
     }
 
     val comunidades = productores.map { it.comunidad }.distinct().sorted()
@@ -105,45 +136,29 @@ fun ProductoresScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // ── Header ──────────────────────────────────────────────────────
-        Box(
+        // ── Resumen y acción (el título está en la barra superior) ─────
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(VerdeProductor)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (onVolver != null) {
-                TextButton(
-                    onClick = onVolver,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Text("←", color = Color.White, fontSize = 20.sp)
-                }
+                TextButton(onClick = onVolver) { Text("← Volver") }
             }
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "🌾 Productores",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "$totalActivos activos · $totalInactivos inactivos · ${productores.size} total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(0.8f)
-                )
-            }
+            Text(
+                "$totalActivos activos · $totalInactivos inactivos · ${productores.size} total",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
             if (!soloLectura) {
                 Button(
                     onClick = { viewModel.limpiarEnvio(); mostrarFormulario = true },
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Text("+ Nuevo", color = VerdeProductor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("+ Nuevo", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
         }
@@ -156,8 +171,8 @@ fun ProductoresScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             TarjetaEstadistica("🟢", "$totalActivos", "Activos", VerdeClaro, Modifier.weight(1f))
-            TarjetaEstadistica("🔴", "$totalInactivos", "Inactivos", Color(0xFFC62828), Modifier.weight(1f))
-            TarjetaEstadistica("📍", "${comunidades.size}", "Comunidades", Color(0xFF1565C0), Modifier.weight(1f))
+            TarjetaEstadistica("🔴", "$totalInactivos", "Inactivos", HuataColores.Rojo, Modifier.weight(1f))
+            TarjetaEstadistica("📍", "${comunidades.size}", "Comunidades", HuataColores.Azul, Modifier.weight(1f))
         }
 
         // ── Búsqueda ─────────────────────────────────────────────────────
@@ -260,6 +275,12 @@ fun ProductoresScreen(
                         productor = productor,
                         onToggleEstado = if (!soloLectura) {
                             { viewModel.cambiarEstado(productor) }
+                        } else null,
+                        onEditar = if (!soloLectura) {
+                            { viewModel.limpiarEnvio(); productorEditando = productor }
+                        } else null,
+                        onEliminar = if (!soloLectura) {
+                            { productorAEliminar = productor }
                         } else null
                     )
                 }
@@ -275,7 +296,9 @@ fun ProductoresScreen(
 @Composable
 private fun TarjetaProductorMejorada(
     productor: Productor,
-    onToggleEstado: (() -> Unit)?
+    onToggleEstado: (() -> Unit)?,
+    onEditar: (() -> Unit)? = null,
+    onEliminar: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -356,10 +379,23 @@ private fun TarjetaProductorMejorada(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    onEditar?.let {
+                        TextButton(onClick = it) {
+                            Text("✏️ Editar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    onEliminar?.let {
+                        TextButton(
+                            onClick = it,
+                            colors = ButtonDefaults.textButtonColors(contentColor = HuataColores.RojoOscuro)
+                        ) {
+                            Text("🗑️ Eliminar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     TextButton(
                         onClick = onToggleEstado,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (productor.estado) Color(0xFFC62828) else VerdeClaro
+                            contentColor = if (productor.estado) HuataColores.Rojo else VerdeClaro
                         )
                     ) {
                         Text(

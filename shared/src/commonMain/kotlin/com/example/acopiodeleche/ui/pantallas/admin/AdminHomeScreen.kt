@@ -71,201 +71,73 @@ import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.Usuario
 import com.example.acopiodeleche.ui.components.FilaFechaHora
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.ui.tema.AvatarIniciales
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.formatoLitros
+import com.example.acopiodeleche.ui.tema.tarjetaHuata
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.Insignia
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import com.example.acopiodeleche.ui.tema.PanelHuata
+import com.example.acopiodeleche.ui.tema.TarjetaEstadistica
+import com.example.acopiodeleche.ui.tema.Tono
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
-private val VerdeHuata = Color(0xFF2E7D32)
-private val RojoAdmin  = Color(0xFFC62828)
+private val VerdeHuata = HuataColores.Verde
+private val RojoAdmin  = HuataColores.Verde   // acento del admin: el verde de la web
 
-// ── Ítems del menú lateral ────────────────────────────────────────────────
+// ── Menú lateral: mismas secciones que el panel web del administrador ─────
 
-private data class ItemMenu(val icono: String, val titulo: String, val indice: Int)
-
-private val MENU_ITEMS = listOf(
-    ItemMenu("🏠", "Inicio",           0),
-    ItemMenu("👥", "Usuarios",         1),
-    ItemMenu("🚜", "Acopiadores",      2),
-    ItemMenu("🌾", "Productores",      3),
-    ItemMenu("💳", "Pagos",            4),
-    ItemMenu("🔬", "Calidad",          5),
-    ItemMenu("📣", "Quejas",           6),
-    ItemMenu("📢", "Avisos",           7),
-    ItemMenu("💰", "Actualizar precio",8),
-    ItemMenu("⚙️", "Configuración",   9)
+private val MENU_ADMIN = listOf(
+    OpcionMenu("🏠", "Dashboard"),
+    OpcionMenu("👥", "Usuarios", "Gestión"),
+    OpcionMenu("🚜", "Acopiadores", "Gestión"),
+    OpcionMenu("🌾", "Productores", "Gestión"),
+    OpcionMenu("💳", "Pagos", "Gestión"),
+    OpcionMenu("🔬", "Calidad y sanciones", "Calidad"),
+    OpcionMenu("📣", "Quejas", "Sistema"),
+    OpcionMenu("📢", "Avisos", "Sistema"),
+    OpcionMenu("💰", "Actualizar precio", "Sistema"),
+    OpcionMenu("⚙️", "Configuración", "Sistema")
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminHomeScreen(
     onCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val usuario     = SesionActual.usuario
     var seccionActual by remember { mutableStateOf(0) }
-    val drawerState  = rememberDrawerState(DrawerValue.Closed)
-    val scope        = rememberCoroutineScope()
+    val panel: AdminViewModel = koinViewModel()
+    val resumen by panel.resumen.collectAsStateWithLifecycle()
+    val quejasAbiertas = (resumen as? EstadoUi.Exito)?.datos?.quejasAbiertas ?: 0
+    val opciones = MENU_ADMIN.map { if (it.titulo == "Quejas") it.copy(insignia = quejasAbiertas) else it }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(260.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
-            ) {
-                // Cabecera del drawer
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(RojoAdmin)
-                        .padding(horizontal = 20.dp, vertical = 24.dp)
-                ) {
-                    Column {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .background(Color.White.copy(0.2f), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
-                        ) { Text("👤", fontSize = 26.sp) }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            usuario?.nombreCompleto ?: "Administrador",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Ecolácteos Huata",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(0.75f)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Ítems de navegación
-                MENU_ITEMS.forEach { item ->
-                    val seleccionado = seccionActual == item.indice
-                    NavigationDrawerItem(
-                        icon  = { Text(item.icono, fontSize = 18.sp) },
-                        label = {
-                            Text(
-                                item.titulo,
-                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        selected = seleccionado,
-                        onClick  = {
-                            seccionActual = item.indice
-                            scope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = RojoAdmin.copy(0.12f),
-                            selectedTextColor      = RojoAdmin,
-                            selectedIconColor      = RojoAdmin
-                        ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                    )
-                }
-
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                // Botón cerrar sesión en el drawer
-                NavigationDrawerItem(
-                    icon  = { Text("🚪", fontSize = 18.sp) },
-                    label = { Text("Cerrar sesión", color = Color(0xFFB71C1C)) },
-                    selected = false,
-                    onClick  = {
-                        scope.launch { drawerState.close() }
-                        onCerrarSesion()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        },
+    EsqueletoRol(
+        opciones = opciones,
+        seleccion = seccionActual,
+        onSeleccionar = { seccionActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = if (seccionActual == 0) "Resumen general del sistema" else null,
         modifier = modifier
     ) {
-        // ── Contenido principal ───────────────────────────────────────────
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // TopBar con botón hamburguesa
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(RojoAdmin)
-                    .padding(horizontal = 8.dp, vertical = 12.dp)
-            ) {
-                // Botón hamburguesa
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(44.dp)
-                        .clickable { scope.launch { drawerState.open() } }
-                        .background(Color.White.copy(0.15f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(8.dp)
-                    ) {
-                        repeat(3) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(2.dp)
-                                    .background(Color.White, RoundedCornerShape(1.dp))
-                            )
-                        }
-                    }
-                }
-
-                // Título de la sección actual
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val item = MENU_ITEMS.find { it.indice == seccionActual }
-                    Text(
-                        "${item?.icono ?: ""} ${item?.titulo ?: "Admin"}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Ecolácteos Huata",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.75f)
-                    )
-                }
-            }
-
-            // Contenido según sección
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (seccionActual) {
-                    0 -> DashboardAdmin()
-                    1 -> UsuariosTab()
-                    2 -> AcopiadoresTab()
-                    3 -> com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen()
-                    4 -> com.example.acopiodeleche.ui.pantallas.pagos.PagosAdminScreen(
-                            onVolver = { seccionActual = 0 }
-                         )
-                    5 -> com.example.acopiodeleche.ui.pantallas.admin.CalidadAdminScreen(
-                            onVolver = { seccionActual = 0 }
-                         )
-                    6 -> QuejasAdminTab()
-                    7 -> AvisosTab()
-                    8 -> ActualizarPrecioTab()
-                    9 -> ConfiguracionSistemaTab()
-                }
-            }
+        when (seccionActual) {
+            0 -> DashboardAdmin()
+            1 -> UsuariosTab()
+            2 -> AcopiadoresTab()
+            3 -> com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen()
+            4 -> com.example.acopiodeleche.ui.pantallas.pagos.PagosAdminScreen(onVolver = { seccionActual = 0 })
+            5 -> com.example.acopiodeleche.ui.pantallas.admin.CalidadAdminScreen(onVolver = { seccionActual = 0 })
+            6 -> QuejasAdminTab()
+            7 -> AvisosTab()
+            8 -> ActualizarPrecioTab()
+            9 -> ConfiguracionSistemaTab()
         }
     }
 }
 
 @Composable
-private fun DashboardAdmin(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun DashboardAdmin(viewModel: AdminViewModel = koinViewModel()) {
     val estado by viewModel.resumen.collectAsStateWithLifecycle()
     val resumen = (estado as? EstadoUi.Exito)?.datos
     if (resumen == null) {
@@ -273,63 +145,65 @@ private fun DashboardAdmin(viewModel: AdminViewModel = viewModel { AdminViewMode
         return
     }
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text("Resumen del sistema", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaDashboard("👥", "${resumen.usuarios}", "Usuarios", VerdeHuata, Modifier.weight(1f))
-                TarjetaDashboard("🌾", "${resumen.productoresActivos}", "Productores\nactivos", Color(0xFF1565C0), Modifier.weight(1f))
-            }
-        }
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaDashboard("🥛", "${resumen.entregasHoy}", "Acopios\nde hoy", Color(0xFF6A1B9A), Modifier.weight(1f))
-                TarjetaDashboard("💰", "S/ ${resumen.precioLitro}", "Precio\nactual/L", Color(0xFFE65100), Modifier.weight(1f))
-            }
-        }
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaDashboard("📦", "${resumen.litrosHoy} L", "Litros\nhoy", VerdeHuata, Modifier.weight(1f))
-                TarjetaDashboard("🚚", "${resumen.entregasEnTransitoHoy}", "En tránsito\nhoy", Color(0xFF1565C0), Modifier.weight(1f))
-            }
-        }
-        item {
-            HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
-            Text("Acceso rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-        item {
-            Text(
-                text = "🔑 Sistema: 4bytes — Ecolácteos Huata\n📱 Versión: 1.0.0\n🗄️ Datos: servidor Ecolácteos (compartidos con la web)\n📣 Quejas abiertas: ${resumen.quejasAbiertas}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            FilaEstadisticas(
+                { TarjetaEstadistica("Litros hoy", formatoLitros(resumen.litrosHoy), "🥛", Tono.VERDE, it) },
+                { TarjetaEstadistica("Acopios de hoy", "${resumen.entregasHoy}", "🚚", Tono.AZUL, it) }
             )
+        }
+        item {
+            FilaEstadisticas(
+                { TarjetaEstadistica("Productores activos", "${resumen.productoresActivos}", "🌾", Tono.DORADO, it) },
+                { TarjetaEstadistica("En tránsito hoy", "${resumen.entregasEnTransitoHoy}", "⏳", Tono.NARANJA, it) }
+            )
+        }
+        item {
+            FilaEstadisticas(
+                { TarjetaEstadistica("Usuarios", "${resumen.usuarios}", "👥", Tono.MORADO, it) },
+                { TarjetaEstadistica("Precio por litro", "S/ ${resumen.precioLitro}", "💰", Tono.VERDE, it) }
+            )
+        }
+        item {
+            FilaEstadisticas(
+                { TarjetaEstadistica("Litros del mes", formatoLitros(resumen.litrosMes), "📦", Tono.CIAN, it) },
+                { TarjetaEstadistica("Quejas abiertas", "${resumen.quejasAbiertas}", "📣", if (resumen.quejasAbiertas > 0) Tono.ROJO else Tono.GRIS, it) }
+            )
+        }
+        item {
+            PanelHuata(titulo = "Sistema", icono = "🗄️") {
+                Text(
+                    "Los datos se comparten con el panel web de Ecolácteos Huata.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Insignia("App 1.0.0", Tono.VERDE)
+                    Insignia("${resumen.lotesActivos} lotes activos", Tono.AZUL)
+                }
+            }
         }
     }
 }
 
+/** Dos tarjetas de estadística lado a lado con el mismo ancho. */
 @Composable
-private fun TarjetaDashboard(icono: String, valor: String, etiqueta: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icono, fontSize = 28.sp)
-            Text(valor, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
-            Text(etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+internal fun FilaEstadisticas(
+    izquierda: @Composable (Modifier) -> Unit,
+    derecha: @Composable (Modifier) -> Unit
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        izquierda(Modifier.weight(1f))
+        derecha(Modifier.weight(1f))
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UsuariosTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun UsuariosTab(viewModel: AdminViewModel = koinViewModel()) {
     // Usuarios del sistema leídos desde Laravel (mismas cuentas que la web)
     val estadoUsuarios by viewModel.usuarios.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
@@ -632,7 +506,7 @@ private fun FormularioUsuario(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AcopiadoresTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun AcopiadoresTab(viewModel: AdminViewModel = koinViewModel()) {
     val estadoUsuarios by viewModel.usuarios.collectAsStateWithLifecycle()
     val estadoEntregas by viewModel.entregasHoy.collectAsStateWithLifecycle()
     val acopiadores = estadoUsuarios.datosOVacio().filter { it.rol == Rol.ACOPIADOR }
@@ -714,8 +588,8 @@ private fun AcopiadoresTab(viewModel: AdminViewModel = viewModel { AdminViewMode
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         ResumenChip("🥛", "$litrosHoy L", "Litros hoy", VerdeHuata)
-                        ResumenChip("📋", "${registros.size}", "Entregas", Color(0xFF1565C0))
-                        ResumenChip("✅", "${registros.count { it.recibido }}", "Recibidos", Color(0xFF6A1B9A))
+                        ResumenChip("📋", "${registros.size}", "Entregas", HuataColores.Azul)
+                        ResumenChip("✅", "${registros.count { it.recibido }}", "Recibidos", HuataColores.Morado)
                     }
                 }
             }
@@ -739,37 +613,31 @@ private fun ResumenChip(icono: String, valor: String, label: String, color: Colo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DetalleAcopiadorScreen(acopiador: Usuario, onVolver: () -> Unit) {
-    val viewModel: AcopiadorAdminViewModel = viewModel(key = "acopiador-${acopiador.id}") { AcopiadorAdminViewModel(acopiador) }
+    val viewModel: AcopiadorAdminViewModel = koinViewModel(key = "acopiador-${acopiador.id}") { parametersOf(acopiador) }
     val envio by viewModel.envio.collectAsStateWithLifecycle()
     var tabActual by remember { mutableStateOf(0) }
     val tabs = listOf("Registros del día", "Mis productores", "Configurar asignación", "Configurar vehículo")
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Encabezado
-        Box(
+        // Encabezado del acopiador (tarjeta blanca como en la web)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(VerdeHuata)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .tarjetaHuata(RoundedCornerShape(16.dp))
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onVolver) {
-                    Text("←", color = Color.White, fontSize = 20.sp)
-                }
-                Spacer(Modifier.width(4.dp))
-                Column {
-                    Text(
-                        acopiador.nombreCompleto,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "📍 ${acopiador.comunidad ?: "-"} · 🚛 ${acopiador.vehiculo ?: "-"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                }
+            TextButton(onClick = onVolver) { Text("←", fontSize = 20.sp) }
+            AvatarIniciales(acopiador.nombres, acopiador.apellidos)
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(acopiador.nombreCompleto, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "📍 ${acopiador.comunidad ?: "-"} · 🚛 ${acopiador.vehiculo ?: "-"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
@@ -830,8 +698,8 @@ private fun RegistrosDiaAcopiador(viewModel: AcopiadorAdminViewModel) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     ResumenChip("🥛", "$litrosTotales L", "Total litros", VerdeHuata)
-                    ResumenChip("📋", "${registros.size}", "Entregas", Color(0xFF1565C0))
-                    ResumenChip("✅", "${registros.count { it.recibido }}", "Recibidos", Color(0xFF2E7D32))
+                    ResumenChip("📋", "${registros.size}", "Entregas", HuataColores.Azul)
+                    ResumenChip("✅", "${registros.count { it.recibido }}", "Recibidos", HuataColores.Verde)
                 }
             }
         }
@@ -1252,8 +1120,7 @@ private fun ConfigurarVehiculo(acopiador: Usuario, viewModel: AcopiadorAdminView
 // ── TAB QUEJAS DEL PRODUCTOR ──────────────────────────────────────────────
 @Composable
 private fun QuejasAdminTab(
-    viewModel: com.example.acopiodeleche.ui.pantallas.productor.QuejasViewModel =
-        androidx.lifecycle.viewmodel.compose.viewModel { com.example.acopiodeleche.ui.pantallas.productor.QuejasViewModel() }
+    viewModel: com.example.acopiodeleche.ui.pantallas.productor.QuejasViewModel = koinViewModel()
 ) {
     // Quejas enviadas por los productores (desde la app o la web), leídas de Laravel
     val estadoQuejas by viewModel.quejas.collectAsStateWithLifecycle()
@@ -1274,7 +1141,7 @@ private fun QuejasAdminTab(
                 Text(
                     "$pendientes pendientes de respuesta",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (pendientes > 0) Color(0xFFE65100) else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (pendientes > 0) HuataColores.NaranjaOscuro else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1318,7 +1185,7 @@ private fun QuejasAdminTab(
                                     modifier = Modifier
                                         .background(
                                             when (queja.estado) {
-                                                com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE -> Color(0xFFE65100).copy(alpha = 0.15f)
+                                                com.example.acopiodeleche.domain.model.EstadoQueja.PENDIENTE -> HuataColores.NaranjaOscuro.copy(alpha = 0.15f)
                                                 com.example.acopiodeleche.domain.model.EstadoQueja.RESPONDIDA -> VerdeHuata.copy(alpha = 0.15f)
                                                 else -> Color.Gray.copy(alpha = 0.15f)
                                             },
@@ -1385,7 +1252,7 @@ private fun QuejasAdminTab(
 // ── TAB AVISOS / EVENTOS ─────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AvisosTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun AvisosTab(viewModel: AdminViewModel = koinViewModel()) {
     // Avisos publicados en Laravel (los ven los productores en la app y en la web)
     val estadoAvisos by viewModel.avisos.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
@@ -1533,7 +1400,7 @@ private fun FormularioAviso(
 }
 
 @Composable
-private fun ActualizarPrecioTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun ActualizarPrecioTab(viewModel: AdminViewModel = koinViewModel()) {
     val estadoAjustes by viewModel.ajustes.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
     val ajustes = estadoAjustes.datosOVacio()
@@ -1643,7 +1510,7 @@ private fun ActualizarPrecioTab(viewModel: AdminViewModel = viewModel { AdminVie
  * que existen en el backend; se editan por grupo, igual que en el panel web.
  */
 @Composable
-private fun ConfiguracionSistemaTab(viewModel: AdminViewModel = viewModel { AdminViewModel() }) {
+private fun ConfiguracionSistemaTab(viewModel: AdminViewModel = koinViewModel()) {
     val estadoAjustes by viewModel.ajustes.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
     if (estadoAjustes !is EstadoUi.Exito) {

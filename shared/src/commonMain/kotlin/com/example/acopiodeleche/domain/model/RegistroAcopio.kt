@@ -25,7 +25,10 @@ data class RegistroAcopio(
     val recibido: Boolean = false,  // false = en tránsito, true = recibido en planta
     val nombreProductor: String? = null, // viene resuelto desde el backend
     val estado: String? = null,          // registrado, aceptado, rechazado, analizado (backend)
-    val idAcopiador: String? = null      // usuario acopiador que registró la entrega
+    val idAcopiador: String? = null,     // usuario acopiador que registró la entrega
+    val estadoSync: EstadoSync = EstadoSync.SINCRONIZADO,
+    val errorSync: String? = null,       // motivo si el servidor rechazó el registro sin conexión
+    val clientUuid: String? = null       // identificador generado en el dispositivo
 ) {
     /** Litros con unidad para mostrar en UI. */
     val litrosFormateados: String
@@ -35,9 +38,17 @@ data class RegistroAcopio(
     val observacionCorta: String
         get() = observacion ?: "Sin observación"
 
+    /** true si el registro solo existe en el dispositivo (todavía no está en el servidor). */
+    val esLocal: Boolean
+        get() = estadoSync != EstadoSync.SINCRONIZADO
+
     /** Estado de recepción legible. */
     val estadoRecepcion: String
-        get() = if (recibido) "Recibido en planta" else "En tránsito"
+        get() = when (estadoSync) {
+            EstadoSync.PENDIENTE -> "Sin enviar · se sincroniza al haber internet"
+            EstadoSync.ERROR -> "No sincronizado"
+            EstadoSync.SINCRONIZADO -> if (recibido) "Recibido en planta" else "En tránsito"
+        }
 
     /** Validación básica: litros positivos y campos obligatorios no vacíos. */
     val esValido: Boolean
@@ -48,3 +59,6 @@ data class RegistroAcopio(
                 && fecha.isNotBlank()
                 && hora.isNotBlank()
 }
+
+/** Dónde está el registro: en el servidor, esperando conexión o rechazado al sincronizar. */
+enum class EstadoSync { SINCRONIZADO, PENDIENTE, ERROR }

@@ -38,6 +38,18 @@ data class RegistrarProductorRequestDto(
 @Serializable
 data class CambiarEstadoProductorRequestDto(val status: String)
 
+/** Edición (PUT /producers/{id}): datos personales de la cuenta y de la finca. */
+@Serializable
+data class ActualizarProductorRequestDto(
+    val name: String,
+    val lastname: String,
+    val dni: String,
+    val phone: String,
+    val address: String? = null,
+    val comunidad: String,
+    val status: String
+)
+
 fun ProductorDto.toDomain(): Productor = Productor(
     idProductor = id.toString(),
     nombres = name.orEmpty(),

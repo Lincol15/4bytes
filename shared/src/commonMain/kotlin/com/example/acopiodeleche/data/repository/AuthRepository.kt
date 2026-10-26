@@ -3,14 +3,19 @@ package com.example.acopiodeleche.data.repository
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.remote.AuthApi
 import com.example.acopiodeleche.data.remote.dto.LoginRequestDto
+import com.example.acopiodeleche.data.remote.dto.aSesion
 import com.example.acopiodeleche.data.remote.dto.rolDesdeApi
 import com.example.acopiodeleche.data.remote.dto.toDomain
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.Usuario
+import kotlin.time.Clock
 
-class AuthRepository(private val api: AuthApi) {
+class AuthRepository(
+    private val api: AuthApi,
+    private val ahora: () -> Long = { Clock.System.now().toEpochMilliseconds() }
+) {
 
-    /** Valida las credenciales en Laravel y abre la sesión con el token recibido. */
+    /** Valida las credenciales en Laravel y abre (y guarda) la sesión con el access y refresh token. */
     suspend fun iniciarSesion(correoODni: String, contrasena: String): ApiResult<Usuario> =
         when (val resultado = api.login(LoginRequestDto(correoODni.trim(), contrasena))) {
             is ApiResult.Error -> resultado
@@ -21,7 +26,7 @@ class AuthRepository(private val api: AuthApi) {
                     ApiResult.SinPermiso("Su rol no tiene acceso a la aplicación móvil.")
                 } else {
                     val usuario = respuesta.user.toDomain(rol)
-                    SesionActual.iniciar(usuario, respuesta.token)
+                    SesionActual.abrir(respuesta.aSesion(usuario, ahora()))
                     ApiResult.Exito(usuario)
                 }
             }

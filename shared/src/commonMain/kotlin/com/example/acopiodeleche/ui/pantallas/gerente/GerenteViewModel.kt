@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.gerente
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.repository.AdminRepository
 import com.example.acopiodeleche.data.repository.CalidadRepository
 import com.example.acopiodeleche.data.repository.PagoRepository
@@ -24,10 +23,10 @@ import kotlinx.datetime.todayIn
 
 /** Vista gerencial de solo lectura con los datos de Laravel. */
 class GerenteViewModel(
-    private val adminRepository: AdminRepository = AppContainer.adminRepository,
-    private val recoleccionRepository: RecoleccionRepository = AppContainer.recoleccionRepository,
-    private val calidadRepository: CalidadRepository = AppContainer.calidadRepository,
-    private val pagoRepository: PagoRepository = AppContainer.pagoRepository
+    private val adminRepository: AdminRepository,
+    private val recoleccionRepository: RecoleccionRepository,
+    private val calidadRepository: CalidadRepository,
+    private val pagoRepository: PagoRepository
 ) : ViewModel() {
 
     private val _resumen = MutableStateFlow<EstadoUi<ResumenPanel>>(EstadoUi.Cargando)

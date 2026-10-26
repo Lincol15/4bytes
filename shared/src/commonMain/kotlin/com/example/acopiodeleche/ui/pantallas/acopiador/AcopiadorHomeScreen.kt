@@ -44,9 +44,28 @@ import com.example.acopiodeleche.ui.estado.datosOVacio
 import com.example.acopiodeleche.ui.estado.fechaHoyPantalla
 import com.example.acopiodeleche.ui.pantallas.acopio.AcopioScreen
 import com.example.acopiodeleche.ui.pantallas.acopio.RecoleccionViewModel
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.EstadoVacio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.Insignia
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import com.example.acopiodeleche.ui.tema.PanelHuata
+import com.example.acopiodeleche.ui.tema.TarjetaEstadistica
+import com.example.acopiodeleche.ui.tema.TarjetaIndicador
+import com.example.acopiodeleche.ui.tema.Tono
+import com.example.acopiodeleche.ui.tema.tarjetaHuata
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata = Color(0xFF2E7D32)
-private val AzulHuata  = Color(0xFF1565C0)
+private val VerdeHuata = HuataColores.Verde
+private val AzulHuata  = HuataColores.Azul
+
+private val MENU_ACOPIADOR = listOf(
+    OpcionMenu("🏠", "Inicio"),
+    OpcionMenu("➕", "Registrar acopio", "Acopio"),
+    OpcionMenu("👥", "Mis productores", "Acopio"),
+    OpcionMenu("📋", "Historial de jornada", "Acopio"),
+    OpcionMenu("🗺️", "Mis rutas", "Acopio")
+)
 
 @Composable
 fun AcopiadorHomeScreen(
@@ -58,168 +77,66 @@ fun AcopiadorHomeScreen(
     // 0=inicio, 1=registrar, 2=mis productores, 3=historial jornada, 4=mis rutas
 
     // Recolecciones y productores del acopiador, leídos desde Laravel (compartidos por las subpantallas)
-    val recoleccionViewModel: RecoleccionViewModel = viewModel { RecoleccionViewModel() }
-    val estadoRegistros by recoleccionViewModel.registros.collectAsStateWithLifecycle()
+    val recoleccionViewModel: RecoleccionViewModel = koinViewModel()
 
-    when (pantallaActual) {
-        1 -> AcopioScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
-        2 -> MisProductoresScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
-        3 -> HistorialJornadaScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
-        4 -> RutasAcopiadorScreen(onVolver = { pantallaActual = 0 })
-        else -> {
-            // El backend ya devuelve SOLO las recolecciones de este acopiador; aquí se toman las de hoy
-            val hoy = fechaHoyPantalla()
-            val misRegistros = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
-            val litrosTotales = misRegistros.sumOf { it.litros }
+    EsqueletoRol(
+        opciones = MENU_ACOPIADOR,
+        seleccion = pantallaActual,
+        onSeleccionar = { pantallaActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = "📍 ${usuario?.comunidad ?: "Sin comunidad"} · 🚛 ${usuario?.vehiculo ?: "Sin vehículo"}",
+        modifier = modifier
+    ) {
+        when (pantallaActual) {
+            1 -> AcopioScreen(viewModel = recoleccionViewModel)
+            2 -> MisProductoresScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
+            3 -> HistorialJornadaScreen(onVolver = { pantallaActual = 0 }, viewModel = recoleccionViewModel)
+            4 -> RutasAcopiadorScreen(onVolver = { pantallaActual = 0 })
+            else -> InicioAcopiador(recoleccionViewModel, onIr = { pantallaActual = it })
+        }
+    }
+}
 
-            Column(modifier = modifier.fillMaxSize()) {
+@Composable
+private fun InicioAcopiador(viewModel: RecoleccionViewModel, onIr: (Int) -> Unit) {
+    val estadoRegistros by viewModel.registros.collectAsStateWithLifecycle()
+    // El backend ya devuelve SOLO las recolecciones de este acopiador; aquí se toman las de hoy
+    val hoy = fechaHoyPantalla()
+    val misRegistros = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
+    val litrosTotales = misRegistros.sumOf { it.litros }
 
-                // ── Encabezado ───────────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(VerdeHuata)
-                        .padding(16.dp)
-                ) {
-                    Column {
-                        Text(
-                            "Hola, ${usuario?.nombres ?: "Acopiador"} 👋",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "📍 ${usuario?.comunidad ?: "Sin comunidad"} · 🚛 ${usuario?.vehiculo ?: "Sin vehículo"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f)
-                        )
-                    }
-                    Text(
-                        "Salir",
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .clickable { onCerrarSesion() }
-                            .padding(4.dp),
-                        color = Color.White.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelMedium
+    LazyColumn(
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TarjetaEstadistica("Entregas hoy", "${misRegistros.size}", "🥛", Tono.VERDE, Modifier.weight(1f))
+                TarjetaEstadistica("Litros hoy", "$litrosTotales L", "📦", Tono.AZUL, Modifier.weight(1f))
+            }
+        }
+        item {
+            Text("Acciones", style = MaterialTheme.typography.titleMedium)
+        }
+        item { MenuItemAcopiador("➕", "Registrar acopio", "Nueva entrega de leche", Tono.VERDE) { onIr(1) } }
+        item { MenuItemAcopiador("👥", "Mis productores", "Productores asignados y su entrega de hoy", Tono.AZUL) { onIr(2) } }
+        item { MenuItemAcopiador("📋", "Historial de jornada", "Todos mis registros de hoy", Tono.MORADO) { onIr(3) } }
+        item { MenuItemAcopiador("🗺️", "Mis rutas", "Rutas asignadas y estado de cada parada", Tono.NARANJA) { onIr(4) } }
+        item {
+            PanelHuata(titulo = "Últimas entregas", icono = "🕒") {
+                when {
+                    estadoRegistros !is EstadoUi.Exito -> CargaOError(
+                        estadoRegistros,
+                        onReintentar = viewModel::cargar,
+                        modifier = Modifier.height(140.dp)
                     )
-                }
-
-                // ── Resumen jornada ──────────────────────────────────────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    TarjetaResumen(
-                        icono    = "🥛",
-                        valor    = "${misRegistros.size}",
-                        etiqueta = "Entregas hoy",
-                        color    = VerdeHuata,
-                        modifier = Modifier.weight(1f)
+                    misRegistros.isEmpty() -> EstadoVacio(
+                        "🥛",
+                        "Sin entregas registradas aún",
+                        "Toca \"Registrar acopio\" para empezar"
                     )
-                    TarjetaResumen(
-                        icono    = "📦",
-                        valor    = "$litrosTotales L",
-                        etiqueta = "Litros hoy",
-                        color    = AzulHuata,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                HorizontalDivider()
-
-                LazyColumn(
-                    contentPadding     = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // ── Menú de acciones ─────────────────────────────────
-                    item {
-                        Text(
-                            "Acciones",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    item {
-                        MenuItemAcopiador(
-                            icono       = "➕",
-                            titulo      = "Registrar acopio",
-                            descripcion = "Nueva entrega de leche",
-                            color       = VerdeHuata
-                        ) { pantallaActual = 1 }
-                    }
-                    item {
-                        MenuItemAcopiador(
-                            icono       = "👥",
-                            titulo      = "Mis productores",
-                            descripcion = "Ver lista de mis productores asignados",
-                            color       = AzulHuata
-                        ) { pantallaActual = 2 }
-                    }
-                    item {
-                        MenuItemAcopiador(
-                            icono       = "📋",
-                            titulo      = "Historial de jornada",
-                            descripcion = "Ver mis registros de hoy",
-                            color       = Color(0xFF6A1B9A)
-                        ) { pantallaActual = 3 }
-                    }
-                    item {
-                        MenuItemAcopiador(
-                            icono       = "🗺️",
-                            titulo      = "Mis rutas",
-                            descripcion = "Rutas asignadas y estado de cada parada",
-                            color       = Color(0xFFE65100)
-                        ) { pantallaActual = 4 }
-                    }
-                    // ── Últimas 3 entregas ───────────────────────────────
-                    item {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Últimas entregas",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (estadoRegistros !is EstadoUi.Exito) {
-                        item {
-                            CargaOError(
-                                estadoRegistros,
-                                onReintentar = recoleccionViewModel::cargar,
-                                modifier = Modifier.height(160.dp)
-                            )
-                        }
-                    } else if (misRegistros.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("🥛", fontSize = 36.sp)
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(
-                                        "Sin entregas registradas aún",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        "Toca \"Registrar acopio\" para empezar",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        items(misRegistros.take(3)) { registro ->
-                            TarjetaRegistroMini(registro)
-                        }
+                    else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        misRegistros.take(3).forEach { TarjetaRegistroMini(it) }
                     }
                 }
             }
@@ -242,33 +159,12 @@ fun MisProductoresScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel) 
     val registrosHoy = estadoRegistros.datosOVacio().filter { it.fecha == hoy }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Encabezado
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(AzulHuata)
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onVolver) {
-                    Text("←", color = Color.White, fontSize = 20.sp)
-                }
-                Spacer(Modifier.width(4.dp))
-                Column {
-                    Text(
-                        "Mis productores",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "${misProductores.size} asignados · ${usuario?.comunidad ?: ""}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                }
-            }
-        }
+        Text(
+            "${misProductores.size} asignados · ${usuario?.comunidad ?: ""}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        )
 
         if (estadoProductores !is EstadoUi.Exito) {
             CargaOError(estadoProductores, onReintentar = viewModel::cargar)
@@ -367,33 +263,12 @@ fun HistorialJornadaScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel
     val recibidos     = registros.count { it.recibido }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Encabezado
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF6A1B9A))
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onVolver) {
-                    Text("←", color = Color.White, fontSize = 20.sp)
-                }
-                Spacer(Modifier.width(4.dp))
-                Column {
-                    Text(
-                        "Historial de jornada",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "${registros.size} entregas · $litrosTotales L total",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                }
-            }
-        }
+        Text(
+            "${registros.size} entregas · $litrosTotales L en total",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        )
 
         if (estadoRegistros !is EstadoUi.Exito) {
             CargaOError(estadoRegistros, onReintentar = viewModel::cargar)
@@ -429,7 +304,7 @@ fun HistorialJornadaScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TarjetaResumen("🥛", "${registros.size}", "Entregas", Color(0xFF6A1B9A), Modifier.weight(1f))
+                    TarjetaResumen("🥛", "${registros.size}", "Entregas", HuataColores.Morado, Modifier.weight(1f))
                     TarjetaResumen("📦", "$litrosTotales L", "Litros", VerdeHuata, Modifier.weight(1f))
                     TarjetaResumen("✅", "$recibidos", "Recibidos", AzulHuata, Modifier.weight(1f))
                 }
@@ -458,10 +333,7 @@ fun HistorialJornadaScreen(onVolver: () -> Unit, viewModel: RecoleccionViewModel
 
 @Composable
 private fun TarjetaRegistroMini(registro: RegistroAcopio) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
+    Box(Modifier.fillMaxWidth().background(HuataColores.Fondo, RoundedCornerShape(12.dp))) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -492,12 +364,7 @@ private fun TarjetaRegistroMini(registro: RegistroAcopio) {
 
 @Composable
 private fun TarjetaRegistroDetalle(registro: RegistroAcopio) {
-    val colorEstado = if (registro.recibido) VerdeHuata else Color(0xFFE65100)
-
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
+    Box(Modifier.fillMaxWidth().tarjetaHuata(RoundedCornerShape(14.dp))) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -527,10 +394,10 @@ private fun TarjetaRegistroDetalle(registro: RegistroAcopio) {
                         fontWeight = FontWeight.Bold,
                         color = VerdeHuata
                     )
-                    Text(
-                        if (registro.recibido) "✅ Recibido" else "⏳ En tránsito",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colorEstado
+                    Spacer(Modifier.height(4.dp))
+                    Insignia(
+                        if (registro.esLocal) "Sin enviar" else if (registro.recibido) "Recibido" else "En tránsito",
+                        if (registro.esLocal) Tono.DORADO else if (registro.recibido) Tono.VERDE else Tono.NARANJA
                     )
                 }
             }
@@ -553,53 +420,35 @@ fun TarjetaResumen(
     etiqueta: String,
     color: Color,
     modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors   = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape    = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(icono, fontSize = 24.sp)
-            Spacer(Modifier.height(2.dp))
-            Text(valor, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-            Text(etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+) = TarjetaIndicador(icono, valor, etiqueta, color, modifier)
 
 @Composable
 private fun MenuItemAcopiador(
     icono: String,
     titulo: String,
     descripcion: String,
-    color: Color,
+    tono: Tono,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape     = RoundedCornerShape(12.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .tarjetaHuata(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(color.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) { Text(icono, fontSize = 24.sp) }
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(titulo, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Text(descripcion, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text("›", fontSize = 24.sp, color = color)
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .background(tono.fondo, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) { Text(icono, fontSize = 22.sp) }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(titulo, style = MaterialTheme.typography.titleSmall)
+            Text(descripcion, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Text("›", fontSize = 24.sp, color = tono.texto)
     }
 }

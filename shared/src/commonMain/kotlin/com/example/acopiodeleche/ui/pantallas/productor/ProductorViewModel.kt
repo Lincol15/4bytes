@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.productor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.CalidadRepository
 import com.example.acopiodeleche.data.repository.NotificacionRepository
@@ -21,10 +20,10 @@ import kotlinx.coroutines.launch
 
 /** Panel del productor: Laravel devuelve solo sus entregas, pagos y análisis, y los avisos dirigidos a él. */
 class ProductorViewModel(
-    private val recoleccionRepository: RecoleccionRepository = AppContainer.recoleccionRepository,
-    private val pagoRepository: PagoRepository = AppContainer.pagoRepository,
-    private val calidadRepository: CalidadRepository = AppContainer.calidadRepository,
-    private val notificacionRepository: NotificacionRepository = AppContainer.notificacionRepository
+    private val recoleccionRepository: RecoleccionRepository,
+    private val pagoRepository: PagoRepository,
+    private val calidadRepository: CalidadRepository,
+    private val notificacionRepository: NotificacionRepository
 ) : ViewModel() {
 
     private val _entregas = MutableStateFlow<EstadoUi<List<RegistroAcopio>>>(EstadoUi.Cargando)

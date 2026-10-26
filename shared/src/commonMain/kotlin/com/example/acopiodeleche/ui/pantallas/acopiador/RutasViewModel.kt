@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.acopiador
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.RutaRepository
 import com.example.acopiodeleche.domain.model.ParadaRuta
@@ -15,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class RutasViewModel(
-    private val repositorio: RutaRepository = AppContainer.rutaRepository
+    private val repositorio: RutaRepository
 ) : ViewModel() {
 
     private val _rutas = MutableStateFlow<EstadoUi<List<RutaRecoleccion>>>(EstadoUi.Cargando)

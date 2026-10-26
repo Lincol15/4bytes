@@ -31,43 +31,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.ParadaRuta
 import com.example.acopiodeleche.domain.model.RutaRecoleccion
 import com.example.acopiodeleche.ui.estado.CargaOError
-import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val NaranjaRuta = Color(0xFFE65100)
+private val NaranjaRuta = HuataColores.NaranjaOscuro
 
 /** Rutas de recolección asignadas al acopiador (desde Laravel) y estado de cada parada. */
 @Composable
 fun RutasAcopiadorScreen(
     onVolver: () -> Unit,
-    viewModel: RutasViewModel = viewModel { RutasViewModel() }
+    viewModel: RutasViewModel = koinViewModel()
 ) {
     val estado by viewModel.rutas.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(NaranjaRuta)
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onVolver) {
-                    Text("←", color = Color.White, fontSize = 20.sp)
-                }
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "Mis rutas",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
 
         if (error != null) {
             Text(

@@ -51,26 +51,30 @@ import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.ui.pantallas.productor.QuejasProductorScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.Notificacion
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoUi
 import com.example.acopiodeleche.ui.estado.datosOVacio
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import com.example.acopiodeleche.ui.tema.TarjetaIndicador
+import com.example.acopiodeleche.ui.tema.tarjetaHuata
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata   = Color(0xFF2E7D32)
-private val VerdeOscuro  = Color(0xFF1B5E20)
-private val AzulHuata    = Color(0xFF1565C0)
-private val AmbarHuata   = Color(0xFFF9A825)
+private val VerdeHuata   = HuataColores.Verde
+private val VerdeOscuro  = HuataColores.VerdeOscuro
+private val AzulHuata    = HuataColores.Azul
+private val AmbarHuata   = HuataColores.DoradoOscuro
 
-private data class ItemMenuProductor(val icono: String, val titulo: String, val indice: Int, val badge: Int = 0)
 
 @Composable
 fun ProductorHomeScreen(
     onCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ProductorViewModel = viewModel { ProductorViewModel() }
+    viewModel: ProductorViewModel = koinViewModel()
 ) {
     val usuario     = SesionActual.usuario
     val idProductor = usuario?.idProductor ?: ""
@@ -92,241 +96,44 @@ fun ProductorHomeScreen(
     val pagosPendientes    = misPagos.count { it.estado == EstadoPago.PENDIENTE }
 
     val menuItems = listOf(
-        ItemMenuProductor("🏠", "Inicio",         0),
-        ItemMenuProductor("🥛", "Mis entregas",   1, misEntregas.size),
-        ItemMenuProductor("💳", "Mis pagos",      2, pagosPendientes),
-        ItemMenuProductor("🔬", "Calidad",        3, misAnalisis.size),
-        ItemMenuProductor("📣", "Quejas",         4),
-        ItemMenuProductor("🔔", "Notificaciones", 5, noLeidas)
+        OpcionMenu("🏠", "Inicio"),
+        OpcionMenu("🥛", "Mis entregas", "Mi cuenta"),
+        OpcionMenu("💳", "Mis pagos", "Mi cuenta", insignia = pagosPendientes),
+        OpcionMenu("🔬", "Calidad", "Mi cuenta"),
+        OpcionMenu("📣", "Quejas", "Mi cuenta"),
+        OpcionMenu("🔔", "Notificaciones", "Mi cuenta", insignia = noLeidas)
     )
 
     var seccionActual by remember { mutableStateOf(0) }
-    val drawerState   = rememberDrawerState(DrawerValue.Closed)
-    val scope         = rememberCoroutineScope()
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(270.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
-            ) {
-                // ── Cabecera del drawer ──────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(listOf(VerdeOscuro, VerdeHuata))
-                        )
-                        .padding(20.dp)
-                ) {
-                    Column {
-                        // Avatar con inicial
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                (productor?.nombres ?: usuario?.nombres ?: "P").take(1).uppercase(),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            productor?.nombreCompleto ?: usuario?.nombreCompleto ?: "Productor",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "📍 ${productor?.comunidad ?: ""}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(0.8f)
-                        )
-                        Text(
-                            "DNI: ${productor?.dni ?: ""}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(0.7f)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // ── Ítems de navegación ──────────────────────────────────
-                menuItems.forEach { item ->
-                    val seleccionado = seccionActual == item.indice
-                    NavigationDrawerItem(
-                        icon  = { Text(item.icono, fontSize = 18.sp) },
-                        label = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    item.titulo,
-                                    fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal
-                                )
-                                if (item.badge > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .background(
-                                                if (item.indice == 5) Color.Red else VerdeHuata,
-                                                CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "${item.badge}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        selected = seleccionado,
-                        onClick  = {
-                            seccionActual = item.indice
-                            scope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = VerdeHuata.copy(0.12f),
-                            selectedTextColor      = VerdeHuata,
-                            selectedIconColor      = VerdeHuata
-                        ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                    )
-                }
-
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                NavigationDrawerItem(
-                    icon  = { Text("🚪", fontSize = 18.sp) },
-                    label = { Text("Cerrar sesión", color = Color(0xFFB71C1C)) },
-                    selected = false,
-                    onClick  = {
-                        scope.launch { drawerState.close() }
-                        onCerrarSesion()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        },
+    EsqueletoRol(
+        opciones = menuItems,
+        seleccion = seccionActual,
+        onSeleccionar = { seccionActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = if (seccionActual == 0) "Bienvenido, ${usuario?.nombres.orEmpty()}" else null,
         modifier = modifier
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // ── TopBar ──────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(VerdeOscuro, VerdeHuata)))
-                    .padding(horizontal = 8.dp, vertical = 12.dp)
-            ) {
-                // Botón hamburguesa
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(44.dp)
-                        .clickable { scope.launch { drawerState.open() } }
-                        .background(Color.White.copy(0.15f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(8.dp)
-                    ) {
-                        repeat(3) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(2.dp)
-                                    .background(Color.White, RoundedCornerShape(1.dp))
-                            )
-                        }
-                    }
-                }
-
-                // Título sección
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val item = menuItems.find { it.indice == seccionActual }
-                    Text(
-                        "${item?.icono ?: ""} ${item?.titulo ?: "Inicio"}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        productor?.nombreCompleto ?: "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.75f)
-                    )
-                }
-
-                // Badge notificaciones en el top
-                if (noLeidas > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 8.dp)
-                            .size(28.dp)
-                            .background(Color.Red, CircleShape)
-                            .clickable {
-                                seccionActual = 5
-                                scope.launch { drawerState.close() }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "$noLeidas",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            // ── Contenido ───────────────────────────────────────────────
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (seccionActual) {
-                    0 -> ResumenProductor(
-                        productor        = productor,
-                        totalEntregas    = misEntregas.size,
-                        totalLitros      = misEntregas.sumOf { it.litros },
-                        pagosPendientes  = pagosPendientes,
-                        noLeidas         = noLeidas
-                    )
-                    1 -> if (estadoEntregas is EstadoUi.Exito) EntregasProductorTab(entregas = misEntregas)
-                         else CargaOError(estadoEntregas, onReintentar = viewModel::cargar)
-                    2 -> if (estadoPagos is EstadoUi.Exito) PagosProductorTab(pagos = misPagos)
-                         else CargaOError(estadoPagos, onReintentar = viewModel::cargar)
-                    3 -> if (estadoAnalisis is EstadoUi.Exito) CalidadProductorTab(analisis = misAnalisis)
-                         else CargaOError(estadoAnalisis, onReintentar = viewModel::cargar)
-                    4 -> QuejasProductorScreen()
-                    5 -> if (estadoNotificaciones is EstadoUi.Exito) {
-                             NotificacionesTab(notificaciones = misNotificaciones, onLeer = viewModel::marcarLeida)
-                         } else {
-                             CargaOError(estadoNotificaciones, onReintentar = viewModel::cargar)
-                         }
-                }
-            }
+        when (seccionActual) {
+            0 -> ResumenProductor(
+                productor        = productor,
+                totalEntregas    = misEntregas.size,
+                totalLitros      = misEntregas.sumOf { it.litros },
+                pagosPendientes  = pagosPendientes,
+                noLeidas         = noLeidas
+            )
+            1 -> if (estadoEntregas is EstadoUi.Exito) EntregasProductorTab(entregas = misEntregas)
+                 else CargaOError(estadoEntregas, onReintentar = viewModel::cargar)
+            2 -> if (estadoPagos is EstadoUi.Exito) PagosProductorTab(pagos = misPagos)
+                 else CargaOError(estadoPagos, onReintentar = viewModel::cargar)
+            3 -> if (estadoAnalisis is EstadoUi.Exito) CalidadProductorTab(analisis = misAnalisis)
+                 else CargaOError(estadoAnalisis, onReintentar = viewModel::cargar)
+            4 -> QuejasProductorScreen()
+            5 -> if (estadoNotificaciones is EstadoUi.Exito) {
+                     NotificacionesTab(notificaciones = misNotificaciones, onLeer = viewModel::marcarLeida)
+                 } else {
+                     CargaOError(estadoNotificaciones, onReintentar = viewModel::cargar)
+                 }
         }
     }
 }
@@ -347,13 +154,9 @@ private fun ResumenProductor(
         contentPadding     = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Banner de bienvenida
+        // Banner de bienvenida (tarjeta blanca de la web)
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = VerdeHuata.copy(0.08f))
-            ) {
+            Box(Modifier.fillMaxWidth().tarjetaHuata()) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -397,7 +200,7 @@ private fun ResumenProductor(
             ) {
                 TarjetaKPI("🥛", "$totalEntregas", "Entregas", VerdeHuata, Modifier.weight(1f))
                 TarjetaKPI("📦", "${totalLitros}L", "Litros", AzulHuata, Modifier.weight(1f))
-                TarjetaKPI("⏳", "$pagosPendientes", "Pagos pend.", Color(0xFFE65100), Modifier.weight(1f))
+                TarjetaKPI("⏳", "$pagosPendientes", "Pagos pend.", HuataColores.NaranjaOscuro, Modifier.weight(1f))
             }
         }
 
@@ -482,25 +285,8 @@ private fun ResumenProductor(
 }
 
 @Composable
-private fun TarjetaKPI(icono: String, valor: String, label: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = color.copy(0.1f)),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(icono, fontSize = 20.sp)
-            Spacer(Modifier.height(2.dp))
-            Text(valor, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-            Text(label, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+private fun TarjetaKPI(icono: String, valor: String, label: String, color: Color, modifier: Modifier) =
+    TarjetaIndicador(icono, valor, label, color, modifier)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENTREGAS
@@ -604,7 +390,7 @@ private fun PagosProductorTab(pagos: List<com.example.acopiodeleche.domain.model
         items(pagos) { pago ->
             val colorEstado = when (pago.estado) {
                 EstadoPago.PAGADO    -> VerdeHuata
-                EstadoPago.PENDIENTE -> Color(0xFFE65100)
+                EstadoPago.PENDIENTE -> HuataColores.NaranjaOscuro
                 else                 -> Color.Gray
             }
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), elevation = CardDefaults.cardElevation(2.dp)) {
@@ -663,7 +449,7 @@ private fun CalidadProductorTab(analisis: List<ControlCalidad>) {
             val colorR = when (cal.resultado) {
                 ResultadoCalidad.APTO      -> VerdeHuata
                 ResultadoCalidad.NO_APTO   -> Color.Red
-                ResultadoCalidad.OBSERVADO -> Color(0xFFF9A825)
+                ResultadoCalidad.OBSERVADO -> HuataColores.DoradoOscuro
                 ResultadoCalidad.PENDIENTE -> Color.Gray
             }
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), elevation = CardDefaults.cardElevation(2.dp)) {

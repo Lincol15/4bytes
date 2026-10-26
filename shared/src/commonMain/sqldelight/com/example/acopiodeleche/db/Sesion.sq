@@ -1,0 +1,30 @@
+-- Datos de la sesión guardada en el dispositivo (para abrir la app sin conexión).
+-- Los tokens NO van aquí: se guardan cifrados en AlmacenSeguro (Keystore / Keychain).
+-- La contraseña nunca se guarda.
+CREATE TABLE sesion (
+    id INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+    id_usuario TEXT NOT NULL,
+    nombres TEXT NOT NULL,
+    apellidos TEXT NOT NULL,
+    dni TEXT NOT NULL,
+    telefono TEXT NOT NULL,
+    correo TEXT NOT NULL,
+    rol TEXT NOT NULL,
+    id_productor TEXT,
+    comunidad TEXT,
+    vehiculo TEXT,
+    access_expira_en INTEGER NOT NULL,
+    refresh_expira_en INTEGER NOT NULL
+);
+
+obtener:
+SELECT * FROM sesion WHERE id = 1;
+
+guardar:
+INSERT OR REPLACE INTO sesion (
+    id, id_usuario, nombres, apellidos, dni, telefono, correo, rol, id_productor, comunidad, vehiculo,
+    access_expira_en, refresh_expira_en
+) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+borrar:
+DELETE FROM sesion;

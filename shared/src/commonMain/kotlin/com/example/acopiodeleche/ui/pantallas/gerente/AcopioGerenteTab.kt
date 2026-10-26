@@ -34,14 +34,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoUi
 import com.example.acopiodeleche.ui.estado.datosOVacio
-import com.example.acopiodeleche.domain.model.RegistroAcopio
+import com.example.acopiodeleche.domain.model.RegistroAcopio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata = Color(0xFF2E7D32)
-private val AzulGerente = Color(0xFF1A237E)
+private val VerdeHuata = HuataColores.Verde
+private val AzulGerente = HuataColores.AzulOscuro
 
 /** Formatea un Double con 1 decimal — alternativa KMP a String.format("%.1f", x). */
 private fun Double.fmt1(): String {
@@ -53,7 +54,7 @@ private fun Double.fmt1(): String {
 @Composable
 fun AcopioGerenteTab(
     modifier: Modifier = Modifier,
-    viewModel: GerenteViewModel = viewModel { GerenteViewModel() }
+    viewModel: GerenteViewModel = koinViewModel()
 ) {
     // Recolecciones de los últimos 30 días, desde Laravel
     val estado by viewModel.registros.collectAsStateWithLifecycle()

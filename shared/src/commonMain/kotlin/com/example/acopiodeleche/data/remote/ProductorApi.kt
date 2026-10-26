@@ -1,11 +1,14 @@
 package com.example.acopiodeleche.data.remote
 
+import com.example.acopiodeleche.data.remote.dto.ActualizarProductorRequestDto
 import com.example.acopiodeleche.data.remote.dto.CambiarEstadoProductorRequestDto
 import com.example.acopiodeleche.data.remote.dto.DataDto
 import com.example.acopiodeleche.data.remote.dto.PaginaDto
 import com.example.acopiodeleche.data.remote.dto.ProductorDto
 import com.example.acopiodeleche.data.remote.dto.RegistrarProductorRequestDto
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.put
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -35,6 +38,18 @@ class ProductorApi(private val cliente: ApiClient) {
                 setBody(peticion)
             }
         }.map { it.data }
+
+    suspend fun actualizar(id: Int, peticion: ActualizarProductorRequestDto): ApiResult<ProductorDto> =
+        cliente.ejecutar<DataDto<ProductorDto>> {
+            put("producers/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(peticion)
+            }
+        }.map { it.data }
+
+    /** Laravel solo permite eliminar productores sin entregas, pagos ni sanciones (responde 422). */
+    suspend fun eliminar(id: Int): ApiResult<Unit> =
+        cliente.ejecutarSinCuerpo { delete("producers/$id") }
 
     suspend fun cambiarEstado(id: Int, activo: Boolean): ApiResult<ProductorDto> =
         cliente.ejecutar<DataDto<ProductorDto>> {

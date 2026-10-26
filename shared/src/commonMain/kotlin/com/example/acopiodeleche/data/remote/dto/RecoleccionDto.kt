@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RecoleccionDto(
     val id: Int,
+    @SerialName("client_uuid") val clientUuid: String? = null,
     @SerialName("producer_id") val idProductor: Int,
     @SerialName("producer_name") val nombreProductor: String? = null,
     @SerialName("collector_id") val idAcopiador: Int? = null,
@@ -34,7 +35,11 @@ data class RegistrarRecoleccionRequestDto(
     val liters: Double,
     val observations: String? = null,
     @SerialName("route_stop_id") val idParada: Int? = null,
-    @SerialName("collection_route_id") val idRuta: Int? = null
+    @SerialName("collection_route_id") val idRuta: Int? = null,
+    /** Generado en el dispositivo: si el envío se repite, Laravel no duplica la entrega. */
+    @SerialName("client_uuid") val clientUuid: String? = null,
+    /** Hora real de la recolección (ISO-8601) cuando se registró sin conexión. */
+    @SerialName("collected_at") val recolectadoEn: String? = null
 )
 
 @Serializable
@@ -62,5 +67,6 @@ fun RecoleccionDto.toDomain(): RegistroAcopio = RegistroAcopio(
     recibido = recibido,
     nombreProductor = nombreProductor,
     estado = status,
-    idAcopiador = idAcopiador?.toString()
+    idAcopiador = idAcopiador?.toString(),
+    clientUuid = clientUuid
 )

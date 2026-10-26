@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
@@ -64,21 +63,29 @@ import com.example.acopiodeleche.ui.components.DatosOCR
 import com.example.acopiodeleche.ui.components.FechaData
 import com.example.acopiodeleche.ui.components.HoraData
 import com.example.acopiodeleche.ui.components.ImagenPickerConOCR
-import com.example.acopiodeleche.ui.components.MostrarImagenTicket
+import com.example.acopiodeleche.ui.components.MostrarImagenTicket
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import org.koin.compose.viewmodel.koinViewModel
 
-private val AzulCalidad = Color(0xFF0277BD)
-private val VerdeHuata  = Color(0xFF2E7D32)
+private val AzulCalidad = HuataColores.Verde
+private val VerdeHuata  = HuataColores.Verde
+
+private val MENU_CALIDAD = listOf(
+    OpcionMenu("🧪", "Nuevo análisis", "Laboratorio"),
+    OpcionMenu("📋", "Historial", "Laboratorio")
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalidadHomeScreen(
     onCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: CalidadViewModel = viewModel { CalidadViewModel() }
+    viewModel: CalidadViewModel = koinViewModel()
 ) {
     val usuario   = SesionActual.usuario
     var tabActual by remember { mutableStateOf(0) }
-    val tabs      = listOf("Nuevo análisis", "Historial")
     val estadoAnalisis    by viewModel.analisis.collectAsStateWithLifecycle()
     val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
     val envio             by viewModel.envio.collectAsStateWithLifecycle()
@@ -88,29 +95,15 @@ fun CalidadHomeScreen(
         if (envio is EstadoEnvio.Exito) tabActual = 1
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(AzulCalidad)
-                .padding(16.dp)
-        ) {
-            Column {
-                Text("Control de Calidad", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Ecolácteos Huata · ${usuario?.nombreCompleto ?: ""}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.8f))
-            }
-            Text(
-                "Salir",
-                modifier = Modifier.align(Alignment.TopEnd).clickable { onCerrarSesion() }.padding(4.dp),
-                color = Color.White.copy(0.8f),
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-        TabRow(selectedTabIndex = tabActual) {
-            tabs.forEachIndexed { i, t ->
-                Tab(selected = tabActual == i, onClick = { tabActual = i }, text = { Text(t) })
-            }
-        }
+    EsqueletoRol(
+        opciones = MENU_CALIDAD,
+        seleccion = tabActual,
+        onSeleccionar = { tabActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = "Laboratorio · análisis LACTOMAT",
+        modifier = modifier
+    ) {
+      Column(Modifier.fillMaxSize()) {
         when (val actual = envio) {
             is EstadoEnvio.Exito -> Text(actual.mensaje, color = AzulCalidad, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).clickable { viewModel.limpiarEnvio() })
@@ -135,6 +128,7 @@ fun CalidadHomeScreen(
             }
         }
     }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -433,7 +427,7 @@ private fun HistorialCalidad(analisis: List<ControlCalidad>) {
                                     when (cal.resultado) {
                                         ResultadoCalidad.APTO      -> VerdeHuata.copy(0.15f)
                                         ResultadoCalidad.NO_APTO   -> Color.Red.copy(0.15f)
-                                        ResultadoCalidad.OBSERVADO -> Color(0xFFF9A825).copy(0.3f)
+                                        ResultadoCalidad.OBSERVADO -> HuataColores.DoradoOscuro.copy(0.3f)
                                         ResultadoCalidad.PENDIENTE -> Color.Gray.copy(0.15f)
                                     },
                                     RoundedCornerShape(8.dp)

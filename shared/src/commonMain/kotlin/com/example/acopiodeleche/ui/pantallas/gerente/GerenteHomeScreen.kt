@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
 import com.example.acopiodeleche.domain.model.DatosMock
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoUi
 import com.example.acopiodeleche.ui.estado.datosOVacio
@@ -53,10 +52,16 @@ import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoProducto
 import com.example.acopiodeleche.ui.pantallas.productores.ProductoresScreen
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import com.example.acopiodeleche.ui.tema.TarjetaEstadistica
+import com.example.acopiodeleche.ui.tema.formatoLitros
+import org.koin.compose.viewmodel.koinViewModel
 
-private val AzulGerente = Color(0xFF1A237E)
-private val VerdeHuata  = Color(0xFF2E7D32)
-private val AmarilloDash = Color(0xFFE65100)
+private val AzulGerente = HuataColores.Verde
+private val VerdeHuata  = HuataColores.Verde
+private val AmarilloDash = HuataColores.NaranjaOscuro
 
 /** Formatea un Double con 2 decimales — alternativa KMP a "%.2f".format(x). */
 private fun Double.fmt2(): String {
@@ -67,16 +72,15 @@ private fun Double.fmt2(): String {
 
 // ── Ítems del menú lateral ─────────────────────────────────────────────────
 
-private data class ItemMenuGerente(val icono: String, val titulo: String, val indice: Int)
 
 private val MENU_GERENTE = listOf(
-    ItemMenuGerente("🏠", "Dashboard",    0),
-    ItemMenuGerente("🌾", "Productores",  1),
-    ItemMenuGerente("🥛", "Acopio",       2),
-    ItemMenuGerente("🔬", "Calidad",      3),
-    ItemMenuGerente("💳", "Pagos",        4),
-    ItemMenuGerente("🧀", "Producción",   5),
-    ItemMenuGerente("📦", "Ventas",       6)
+    OpcionMenu("🏠", "Dashboard"),
+    OpcionMenu("🌾", "Productores", "Gestión"),
+    OpcionMenu("🥛", "Acopio", "Gestión"),
+    OpcionMenu("🔬", "Calidad", "Gestión"),
+    OpcionMenu("💳", "Pagos", "Gestión"),
+    OpcionMenu("🧀", "Producción", "Gestión"),
+    OpcionMenu("📦", "Ventas", "Comercial")
 )
 
 @Composable
@@ -84,176 +88,30 @@ fun GerenteHomeScreen(
     onCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val usuario       = SesionActual.usuario
     var seccionActual by remember { mutableStateOf(0) }
-    val drawerState   = rememberDrawerState(DrawerValue.Closed)
-    val scope         = rememberCoroutineScope()
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier             = Modifier.width(260.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
-            ) {
-                // ── Cabecera con perfil ────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(AzulGerente)
-                        .padding(horizontal = 20.dp, vertical = 24.dp)
-                ) {
-                    Column {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .background(Color.White.copy(0.2f), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
-                        ) { Text("📊", fontSize = 26.sp) }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            usuario?.nombreCompleto ?: "Gerente",
-                            style      = MaterialTheme.typography.titleSmall,
-                            color      = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Gerente General",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(0.75f)
-                        )
-                        Text(
-                            "Ecolácteos Huata",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(0.6f)
-                        )
-                        if (!usuario?.correo.isNullOrBlank()) {
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                usuario!!.correo,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(0.5f)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // ── Ítems de navegación ────────────────────────────────────
-                MENU_GERENTE.forEach { item ->
-                    val seleccionado = seccionActual == item.indice
-                    NavigationDrawerItem(
-                        icon  = { Text(item.icono, fontSize = 18.sp) },
-                        label = {
-                            Text(
-                                item.titulo,
-                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        selected = seleccionado,
-                        onClick  = {
-                            seccionActual = item.indice
-                            scope.launch { drawerState.close() }
-                        },
-                        colors   = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = AzulGerente.copy(0.12f),
-                            selectedTextColor      = AzulGerente,
-                            selectedIconColor      = AzulGerente
-                        ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                    )
-                }
-
-                // ── Cerrar sesión al fondo ─────────────────────────────────
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                NavigationDrawerItem(
-                    icon     = { Text("🚪", fontSize = 18.sp) },
-                    label    = { Text("Cerrar sesión", color = Color(0xFFB71C1C)) },
-                    selected = false,
-                    onClick  = {
-                        scope.launch { drawerState.close() }
-                        onCerrarSesion()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        },
+    EsqueletoRol(
+        opciones = MENU_GERENTE,
+        seleccion = seccionActual,
+        onSeleccionar = { seccionActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = if (seccionActual == 0) "Indicadores de la planta (solo lectura)" else null,
         modifier = modifier
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // ── TopBar ────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(AzulGerente)
-                    .padding(horizontal = 8.dp, vertical = 12.dp)
-            ) {
-                // Botón hamburguesa
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(44.dp)
-                        .clickable { scope.launch { drawerState.open() } }
-                        .background(Color.White.copy(0.15f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier            = Modifier.padding(8.dp)
-                    ) {
-                        repeat(3) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(2.dp)
-                                    .background(Color.White, RoundedCornerShape(1.dp))
-                            )
-                        }
-                    }
-                }
-
-                Column(
-                    modifier            = Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val item = MENU_GERENTE.find { it.indice == seccionActual }
-                    Text(
-                        "${item?.icono ?: ""} ${item?.titulo ?: "Gerencia"}",
-                        style      = MaterialTheme.typography.titleMedium,
-                        color      = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text("Ecolácteos Huata", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(0.75f))
-                }
-            }
-
-            // ── Contenido ─────────────────────────────────────────────────
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (seccionActual) {
-                    0 -> DashboardGerente()
-                    1 -> ProductoresScreen(soloLectura = true)
-                    2 -> AcopioGerenteTab()
-                    3 -> CalidadGerenteTab()
-                    4 -> PagosGerenteTab()
-                    5 -> ProduccionGerenteTab()
-                    6 -> VentasGerenteTab()
-                }
-            }
+        when (seccionActual) {
+            0 -> DashboardGerente()
+            1 -> ProductoresScreen(soloLectura = true)
+            2 -> AcopioGerenteTab()
+            3 -> CalidadGerenteTab()
+            4 -> PagosGerenteTab()
+            5 -> ProduccionGerenteTab()
+            6 -> VentasGerenteTab()
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DASHBOARD
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun DashboardGerente(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+private fun DashboardGerente(viewModel: GerenteViewModel = koinViewModel()) {
     // Indicadores calculados por Laravel (mismos que el panel web)
     val estadoResumen  by viewModel.resumen.collectAsStateWithLifecycle()
     val estadoAnalisis by viewModel.analisis.collectAsStateWithLifecycle()
@@ -268,18 +126,13 @@ private fun DashboardGerente(viewModel: GerenteViewModel = viewModel { GerenteVi
     val pagosRend   = estadoPagos.datosOVacio().count { it.estado == EstadoPago.PENDIENTE }
 
     LazyColumn(
-        contentPadding      = PaddingValues(16.dp),
+        contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text("Resumen ejecutivo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Vista gerencial — Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
         // KPIs fila 1
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaKpi("🥛", "${resumen.litrosMes} L", "Litros del mes", AzulGerente, Modifier.weight(1f))
+                TarjetaKpi("🥛", formatoLitros(resumen.litrosMes), "Litros del mes", AzulGerente, Modifier.weight(1f))
                 TarjetaKpi("👥", "${resumen.productoresActivos}", "Productores activos", VerdeHuata, Modifier.weight(1f))
             }
         }
@@ -287,14 +140,14 @@ private fun DashboardGerente(viewModel: GerenteViewModel = viewModel { GerenteVi
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TarjetaKpi("🧀", "${resumen.lotesActivos}", "Lotes en proceso", AmarilloDash, Modifier.weight(1f))
-                TarjetaKpi("💰", "S/ ${resumen.ventasMes.toLong()}", "Ventas del mes", Color(0xFF6A1B9A), Modifier.weight(1f))
+                TarjetaKpi("💰", "S/ ${resumen.ventasMes.toLong()}", "Ventas del mes", HuataColores.Morado, Modifier.weight(1f))
             }
         }
         // KPIs fila 3
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaKpi("🔬", "${analisis.size}", "Análisis calidad", Color(0xFF00838F), Modifier.weight(1f))
-                TarjetaKpi("💳", "$pagosRend", "Pagos pendientes", if (pagosRend > 0) Color(0xFFC62828) else VerdeHuata, Modifier.weight(1f))
+                TarjetaKpi("🔬", "${analisis.size}", "Análisis calidad", HuataColores.Cian, Modifier.weight(1f))
+                TarjetaKpi("💳", "$pagosRend", "Pagos pendientes", if (pagosRend > 0) HuataColores.Rojo else VerdeHuata, Modifier.weight(1f))
             }
         }
 
@@ -349,26 +202,15 @@ private fun DashboardGerente(viewModel: GerenteViewModel = viewModel { GerenteVi
 }
 
 @Composable
-private fun TarjetaKpi(icono: String, valor: String, etiqueta: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        colors   = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape    = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icono, fontSize = 26.sp)
-            Text(valor, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-            Text(etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+private fun TarjetaKpi(icono: String, valor: String, etiqueta: String, color: Color, modifier: Modifier) =
+    TarjetaEstadistica(etiqueta, valor, icono, color, modifier)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CALIDAD
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun CalidadGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+private fun CalidadGerenteTab(viewModel: GerenteViewModel = koinViewModel()) {
     val estado by viewModel.analisis.collectAsStateWithLifecycle()
     if (estado !is EstadoUi.Exito) {
         CargaOError(estado, onReintentar = viewModel::cargar)
@@ -393,8 +235,8 @@ private fun CalidadGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteV
         items(analisis) { cal ->
             val colorRes  = when (cal.resultado) {
                 ResultadoCalidad.APTO      -> VerdeHuata
-                ResultadoCalidad.NO_APTO   -> Color(0xFFC62828)
-                ResultadoCalidad.OBSERVADO -> Color(0xFFF9A825)
+                ResultadoCalidad.NO_APTO   -> HuataColores.Rojo
+                ResultadoCalidad.OBSERVADO -> HuataColores.DoradoOscuro
                 else                       -> Color.Gray
             }
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
@@ -423,7 +265,7 @@ private fun CalidadGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteV
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PagosGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteViewModel() }) {
+private fun PagosGerenteTab(viewModel: GerenteViewModel = koinViewModel()) {
     val estado by viewModel.pagos.collectAsStateWithLifecycle()
     if (estado !is EstadoUi.Exito) {
         CargaOError(estado, onReintentar = viewModel::cargar)
@@ -449,12 +291,12 @@ private fun PagosGerenteTab(viewModel: GerenteViewModel = viewModel { GerenteVie
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TarjetaKpi("✅", "S/ ${totalPagado.toLong()}", "Pagado", VerdeHuata, Modifier.weight(1f))
-                TarjetaKpi("⏳", "S/ ${totalPend.toLong()}", "Pendiente", Color(0xFFE65100), Modifier.weight(1f))
+                TarjetaKpi("⏳", "S/ ${totalPend.toLong()}", "Pendiente", HuataColores.NaranjaOscuro, Modifier.weight(1f))
             }
         }
         item { HorizontalDivider() }
         items(pagos) { pago ->
-            val colorEstado = if (pago.estado == EstadoPago.PAGADO) VerdeHuata else Color(0xFFE65100)
+            val colorEstado = if (pago.estado == EstadoPago.PAGADO) VerdeHuata else HuataColores.NaranjaOscuro
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("💳", fontSize = 22.sp)
@@ -500,7 +342,7 @@ private fun ProduccionGerenteTab() {
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaKpi("🧀", "$totalQueso kg", "Queso total", Color(0xFFE65100), Modifier.weight(1f))
+                TarjetaKpi("🧀", "$totalQueso kg", "Queso total", HuataColores.NaranjaOscuro, Modifier.weight(1f))
                 TarjetaKpi("🥛", "$totalYogur L", "Yogur total", AzulGerente, Modifier.weight(1f))
             }
         }
@@ -516,7 +358,7 @@ private fun ProduccionGerenteTab() {
                         if (!lote.observacion.isNullOrBlank())
                             Text("📝 ${lote.observacion}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text(lote.cantidadFormateada, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                    Text(lote.cantidadFormateada, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = HuataColores.NaranjaOscuro)
                 }
             }
         }
@@ -583,7 +425,7 @@ private fun VentasGerenteTab() {
                     resumenPorProducto.forEach { (tipo, cant, tot) ->
                         Card(
                             modifier = Modifier.weight(1f),
-                            colors   = CardDefaults.cardColors(containerColor = Color(0xFFE65100).copy(0.08f)),
+                            colors   = CardDefaults.cardColors(containerColor = HuataColores.NaranjaOscuro.copy(0.08f)),
                             shape    = RoundedCornerShape(10.dp)
                         ) {
                             Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {

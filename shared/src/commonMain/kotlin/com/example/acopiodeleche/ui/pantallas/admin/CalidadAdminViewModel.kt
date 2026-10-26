@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.CalidadRepository
 import com.example.acopiodeleche.data.repository.ProductorRepository
@@ -21,9 +20,9 @@ import kotlinx.coroutines.launch
 
 /** Calidad vista por el administrador: evaluar análisis y emitir sanciones (datos de Laravel). */
 class CalidadAdminViewModel(
-    private val calidadRepository: CalidadRepository = AppContainer.calidadRepository,
-    private val sancionRepository: SancionRepository = AppContainer.sancionRepository,
-    private val productorRepository: ProductorRepository = AppContainer.productorRepository
+    private val calidadRepository: CalidadRepository,
+    private val sancionRepository: SancionRepository,
+    private val productorRepository: ProductorRepository
 ) : ViewModel() {
 
     private val _analisis = MutableStateFlow<EstadoUi<List<ControlCalidad>>>(EstadoUi.Cargando)

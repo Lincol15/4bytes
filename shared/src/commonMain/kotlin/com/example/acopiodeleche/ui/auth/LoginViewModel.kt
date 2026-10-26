@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.AuthRepository
 import com.example.acopiodeleche.domain.model.Usuario
@@ -19,7 +18,7 @@ data class LoginUiState(
 )
 
 class LoginViewModel(
-    private val authRepository: AuthRepository = AppContainer.authRepository
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(LoginUiState())

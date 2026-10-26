@@ -1,0 +1,20 @@
+-- Versión 1 → 2: los tokens salen de SQLite y pasan al almacén seguro de la plataforma.
+-- Se recrea la tabla sin las columnas de tokens (así también se borran los que hubiera
+-- en texto plano); el usuario vuelve a iniciar sesión una vez.
+DROP TABLE IF EXISTS sesion;
+
+CREATE TABLE sesion (
+    id INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+    id_usuario TEXT NOT NULL,
+    nombres TEXT NOT NULL,
+    apellidos TEXT NOT NULL,
+    dni TEXT NOT NULL,
+    telefono TEXT NOT NULL,
+    correo TEXT NOT NULL,
+    rol TEXT NOT NULL,
+    id_productor TEXT,
+    comunidad TEXT,
+    vehiculo TEXT,
+    access_expira_en INTEGER NOT NULL,
+    refresh_expira_en INTEGER NOT NULL
+);

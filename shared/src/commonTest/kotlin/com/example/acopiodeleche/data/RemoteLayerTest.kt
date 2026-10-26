@@ -53,7 +53,7 @@ class RemoteLayerTest {
     fun login_guarda_token_y_las_peticiones_siguientes_lo_envian() = runTest {
         val cliente = cliente { peticion ->
             if (peticion.url.encodedPath.endsWith("auth/login")) {
-                json("""{"data":{"token":"1|abc","token_type":"Bearer","user":{"id":7,"name":"Carlos","lastname":"Mamani","email":"c@x.com","role":"acopiador","active":true,"comunidad":"Huata","vehiculo":"ABC-123"}}}""")
+                json("""{"data":{"access_token":"1|abc","refresh_token":"2|ref","token_type":"Bearer","expires_in":3600,"refresh_expires_in":2592000,"user":{"id":7,"name":"Carlos","lastname":"Mamani","email":"c@x.com","role":"acopiador","active":true,"comunidad":"Huata","vehiculo":"ABC-123"}}}""")
             } else {
                 json("""{"data":[]}""")
             }
@@ -66,6 +66,7 @@ class RemoteLayerTest {
         assertEquals("7", usuario.id)
         assertEquals("", usuario.contrasena)
         assertEquals("1|abc", SesionActual.sesion?.token)
+        assertEquals("2|ref", SesionActual.sesion?.refreshToken)
         assertTrue(cuerpos.first().contains("\"login\":\"c@x.com\""))
 
         ProductorRepository(ProductorApi(cliente)).listar()

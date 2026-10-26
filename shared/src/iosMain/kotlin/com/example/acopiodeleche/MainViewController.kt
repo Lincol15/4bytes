@@ -1,6 +1,7 @@
 package com.example.acopiodeleche
 
 import androidx.compose.ui.window.ComposeUIViewController
+import com.example.acopiodeleche.di.iniciarApp
 import com.example.acopiodeleche.data.remote.ApiConfig
 import platform.Foundation.NSBundle
 import platform.UIKit.UIViewController
@@ -10,6 +11,8 @@ fun MainViewController(): UIViewController {
     (NSBundle.mainBundle.objectForInfoDictionaryKey("API_BASE_URL") as? String)
         ?.takeIf { it.isNotBlank() }
         ?.let { ApiConfig.baseUrl = it }
+    // Koin, base SQLite local, Keychain, monitor de red y sesión guardada
+    iniciarApp()
 
     return ComposeUIViewController { App() }
 }

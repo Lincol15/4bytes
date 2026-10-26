@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ConfiguracionPlanta
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.PagoAcopiador
 import com.example.acopiodeleche.domain.model.VistaPreviaPago
 import com.example.acopiodeleche.ui.estado.CargaOError
@@ -59,9 +58,11 @@ import com.example.acopiodeleche.domain.model.EstadoPago
 import com.example.acopiodeleche.domain.model.Pago
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.RegistroAcopio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata = Color(0xFF2E7D32)
-private val AzulPago   = Color(0xFF1565C0)
+private val VerdeHuata = HuataColores.Verde
+private val AzulPago   = HuataColores.Azul
 
 /**
  * Pantalla de Pagos para el Administrador.
@@ -79,37 +80,18 @@ fun PagosAdminScreen(
 ) {
     var tabActual by remember { mutableStateOf(0) }
     val tabs = listOf("Resumen litros", "Pagos generados", "Acopiadores")
-    val viewModel: PagosAdminViewModel = viewModel { PagosAdminViewModel() }
+    val viewModel: PagosAdminViewModel = koinViewModel()
     val envio by viewModel.envio.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // Encabezado
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(VerdeHuata)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onVolver) {
-                Text("←", color = Color.White, fontSize = 20.sp)
-            }
-            Spacer(Modifier.width(4.dp))
-            Column {
-                Text(
-                    "Gestión de Pagos",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "Precio: S/ ${ConfiguracionPlanta.precioPorLitro}/L · Pago cada viernes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-            }
-        }
+        // El título está en la barra superior; aquí solo el resumen
+        Text(
+            "Precio: S/ ${ConfiguracionPlanta.precioPorLitro}/L · Pago cada viernes",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        )
 
         TabRow(selectedTabIndex = tabActual) {
             tabs.forEachIndexed { i, t ->
@@ -119,7 +101,7 @@ fun PagosAdminScreen(
 
         when (val actual = envio) {
             is EstadoEnvio.Exito -> MensajePago(actual.mensaje, VerdeHuata, viewModel::limpiarEnvio)
-            is EstadoEnvio.Error -> MensajePago(actual.mensaje, Color(0xFFC62828), viewModel::limpiarEnvio)
+            is EstadoEnvio.Error -> MensajePago(actual.mensaje, HuataColores.Rojo, viewModel::limpiarEnvio)
             else -> Unit
         }
 
@@ -244,7 +226,7 @@ private fun PagosGeneradosTab(viewModel: PagosAdminViewModel) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TarjetaResumenPago("⏳", "$pendientes", "Pendientes", Color(0xFFE65100), Modifier.weight(1f))
+                TarjetaResumenPago("⏳", "$pendientes", "Pendientes", HuataColores.NaranjaOscuro, Modifier.weight(1f))
                 TarjetaResumenPago("💰", soles(totalPendiente), "Por pagar", VerdeHuata, Modifier.weight(1f))
             }
         }
@@ -291,8 +273,8 @@ private fun TarjetaResumenPago(icono: String, valor: String, etiqueta: String, c
 private fun TarjetaPagoProductor(pago: Pago, enviando: Boolean, onMarcarPagado: () -> Unit) {
     val colorEstado = when (pago.estado) {
         EstadoPago.PAGADO    -> VerdeHuata
-        EstadoPago.PENDIENTE -> Color(0xFFE65100)
-        EstadoPago.PARCIAL   -> Color(0xFFF9A825)
+        EstadoPago.PENDIENTE -> HuataColores.NaranjaOscuro
+        EstadoPago.PARCIAL   -> HuataColores.DoradoOscuro
     }
 
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {

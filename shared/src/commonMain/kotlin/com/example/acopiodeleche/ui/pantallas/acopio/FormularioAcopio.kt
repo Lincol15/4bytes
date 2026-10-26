@@ -42,9 +42,10 @@ import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.ui.components.FechaData
-import com.example.acopiodeleche.ui.components.HoraData
+import com.example.acopiodeleche.ui.components.HoraData
+import com.example.acopiodeleche.ui.tema.HuataColores
 
-private val VerdeHuata = Color(0xFF2E7D32)
+private val VerdeHuata = HuataColores.Verde
 
 @Composable
 fun FormularioAcopio(

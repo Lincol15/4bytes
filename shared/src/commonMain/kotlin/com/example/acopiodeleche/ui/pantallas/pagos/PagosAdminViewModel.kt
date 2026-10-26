@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.pagos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.PagoRepository
 import com.example.acopiodeleche.domain.model.Pago
@@ -27,7 +26,7 @@ import kotlinx.datetime.todayIn
  * acopiadores (CollectorPayrollService); la app solo las muestra y dispara las acciones.
  */
 class PagosAdminViewModel(
-    private val repositorio: PagoRepository = AppContainer.pagoRepository
+    private val repositorio: PagoRepository
 ) : ViewModel() {
 
     private val hoy = kotlin.time.Clock.System.todayIn(TimeZone.currentSystemDefault())

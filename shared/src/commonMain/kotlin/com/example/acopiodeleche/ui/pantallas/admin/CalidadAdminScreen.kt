@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.sp
 import com.example.acopiodeleche.domain.model.ControlCalidad
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.data.remote.dto.MOTIVOS_RECHAZO
 import com.example.acopiodeleche.domain.model.Productor
 import com.example.acopiodeleche.ui.estado.CargaOError
@@ -59,10 +58,12 @@ import com.example.acopiodeleche.domain.model.ResultadoCalidad
 import com.example.acopiodeleche.domain.model.Sancion
 import com.example.acopiodeleche.domain.model.SesionActual
 import com.example.acopiodeleche.domain.model.TipoSancion
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata  = Color(0xFF2E7D32)
-private val RojoAdmin   = Color(0xFFC62828)
-private val AmarilloAdv = Color(0xFFF57F17)
+private val VerdeHuata  = HuataColores.Verde
+private val RojoAdmin   = HuataColores.Rojo
+private val AmarilloAdv = HuataColores.DoradoOscuro
 
 @Composable
 fun CalidadAdminScreen(
@@ -74,32 +75,13 @@ fun CalidadAdminScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // Encabezado
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF0277BD))
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onVolver) {
-                Text("←", color = Color.White, fontSize = 20.sp)
-            }
-            Spacer(Modifier.width(4.dp))
-            Column {
-                Text(
-                    "Control de Calidad",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "Evaluación y sanciones — Ecolácteos Huata",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-            }
-        }
+        // El título está en la barra superior; aquí solo el resumen
+        Text(
+            "Evaluación de análisis y sanciones a productores",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        )
 
         TabRow(selectedTabIndex = tabActual) {
             tabs.forEachIndexed { i, t ->
@@ -119,7 +101,7 @@ fun CalidadAdminScreen(
 @Composable
 private fun AnalisisAdminTab(
     onIrSanciones: () -> Unit,
-    viewModel: CalidadAdminViewModel = viewModel { CalidadAdminViewModel() }
+    viewModel: CalidadAdminViewModel = koinViewModel()
 ) {
     // Análisis registrados por control de calidad (app o web), desde Laravel
     val estadoAnalisis by viewModel.analisis.collectAsStateWithLifecycle()
@@ -163,7 +145,7 @@ private fun AnalisisAdminTab(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChipResumen("⏳ $pendientes", "Pendientes", AmarilloAdv, Modifier.weight(1f))
                 ChipResumen("✅ $aptos", "Aptos", VerdeHuata, Modifier.weight(1f))
-                ChipResumen("👁 $observados", "Observados", Color(0xFFE65100), Modifier.weight(1f))
+                ChipResumen("👁 $observados", "Observados", HuataColores.NaranjaOscuro, Modifier.weight(1f))
                 ChipResumen("❌ $noAptos", "No aptos", RojoAdmin, Modifier.weight(1f))
             }
         }
@@ -257,7 +239,7 @@ private fun TarjetaAnalisisAdmin(
     val colorResultado = when (analisis.resultado) {
         ResultadoCalidad.APTO      -> VerdeHuata
         ResultadoCalidad.NO_APTO   -> RojoAdmin
-        ResultadoCalidad.OBSERVADO -> Color(0xFFE65100)
+        ResultadoCalidad.OBSERVADO -> HuataColores.NaranjaOscuro
         ResultadoCalidad.PENDIENTE -> AmarilloAdv
     }
 
@@ -347,7 +329,7 @@ private fun TarjetaAnalisisAdmin(
                     ) { Text("✅ Apto", style = MaterialTheme.typography.labelSmall) }
                     Button(
                         onClick = { onEvaluar(ResultadoCalidad.OBSERVADO, null); mostrarEvaluacion = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                        colors = ButtonDefaults.buttonColors(containerColor = HuataColores.NaranjaOscuro),
                         modifier = Modifier.weight(1f)
                     ) { Text("👁 Observado", style = MaterialTheme.typography.labelSmall) }
                     Button(
@@ -381,7 +363,7 @@ private fun TarjetaAnalisisAdmin(
 // ── SANCIONES ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun SancionesTab(viewModel: CalidadAdminViewModel = viewModel { CalidadAdminViewModel() }) {
+private fun SancionesTab(viewModel: CalidadAdminViewModel = koinViewModel()) {
     // Sanciones registradas en Laravel (las mismas que el módulo de sanciones de la web)
     val estadoSanciones by viewModel.sanciones.collectAsStateWithLifecycle()
     val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
@@ -450,7 +432,7 @@ private fun SancionesTab(viewModel: CalidadAdminViewModel = viewModel { CalidadA
 private fun TarjetaSancion(sancion: Sancion) {
     val color = when (sancion.tipo) {
         TipoSancion.ADVERTENCIA         -> AmarilloAdv
-        TipoSancion.SUSPENSION_TEMPORAL -> Color(0xFFE65100)
+        TipoSancion.SUSPENSION_TEMPORAL -> HuataColores.NaranjaOscuro
         TipoSancion.RETIRO              -> RojoAdmin
     }
 

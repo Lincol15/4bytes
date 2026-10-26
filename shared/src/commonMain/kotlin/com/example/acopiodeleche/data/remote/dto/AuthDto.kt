@@ -1,6 +1,7 @@
 package com.example.acopiodeleche.data.remote.dto
 
 import com.example.acopiodeleche.domain.model.Rol
+import com.example.acopiodeleche.domain.model.SesionUsuario
 import com.example.acopiodeleche.domain.model.Usuario
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,11 +14,26 @@ data class LoginRequestDto(
     @SerialName("device_name") val dispositivo: String = "app-movil"
 )
 
+/** Respuesta de login y de /auth/refresh: par de tokens Sanctum y el usuario. */
 @Serializable
 data class LoginResponseDto(
-    val token: String,
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String,
     @SerialName("token_type") val tipoToken: String,
+    /** Segundos de validez del access token. */
+    @SerialName("expires_in") val expiraEn: Long,
+    /** Segundos de validez del refresh token. */
+    @SerialName("refresh_expires_in") val refreshExpiraEn: Long,
     val user: UsuarioDto
+)
+
+/** Sesión a partir de la respuesta, con los vencimientos convertidos a epoch en ms. */
+fun LoginResponseDto.aSesion(usuario: Usuario, ahora: Long): SesionUsuario = SesionUsuario(
+    usuario = usuario,
+    token = accessToken,
+    refreshToken = refreshToken,
+    tokenExpiraEn = ahora + expiraEn * 1000,
+    refreshExpiraEn = ahora + refreshExpiraEn * 1000
 )
 
 @Serializable

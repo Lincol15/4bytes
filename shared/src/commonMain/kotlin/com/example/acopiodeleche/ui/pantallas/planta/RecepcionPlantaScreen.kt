@@ -25,18 +25,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
-import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.estado.EstadoUi
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val AzulRecepcion = Color(0xFF1565C0)
+private val AzulRecepcion = HuataColores.Azul
 
 /** Recepción en planta: lista las entregas en tránsito y registra su llegada en el backend. */
 @Composable
 fun RecepcionPlantaScreen(
-    viewModel: RecepcionPlantaViewModel = viewModel { RecepcionPlantaViewModel() }
+    viewModel: RecepcionPlantaViewModel = koinViewModel()
 ) {
     val pendientes by viewModel.pendientes.collectAsStateWithLifecycle()
     val envio by viewModel.envio.collectAsStateWithLifecycle()

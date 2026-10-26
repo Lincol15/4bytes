@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.planta
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.PlantaRepository
 import com.example.acopiodeleche.domain.model.InsumoPlanta
@@ -24,7 +23,7 @@ import kotlinx.coroutines.launch
  * El cálculo de leche, insumos, stock e IGV lo hace el backend.
  */
 class PlantaViewModel(
-    private val repositorio: PlantaRepository = AppContainer.plantaRepository
+    private val repositorio: PlantaRepository
 ) : ViewModel() {
 
     private val _productos = MutableStateFlow<EstadoUi<List<ProductoPlanta>>>(EstadoUi.Cargando)

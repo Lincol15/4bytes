@@ -34,18 +34,22 @@ fun FormularioProductor(
     alCancelar: () -> Unit,
     modifier: Modifier = Modifier,
     enviando: Boolean = false,
-    mensajeError: String? = null
+    mensajeError: String? = null,
+    /** Si se indica, el formulario edita ese productor: no pide correo ni contraseña. */
+    productorEditar: Productor? = null
 ) {
-    // --- Estado por campo ---
-    var nombres      by remember { mutableStateOf("") }
-    var apellidos    by remember { mutableStateOf("") }
-    var dni          by remember { mutableStateOf("") }
-    var telefono     by remember { mutableStateOf("") }
-    var direccion    by remember { mutableStateOf("") }
-    var comunidad    by remember { mutableStateOf("") }
+    val esEdicion = productorEditar != null
+
+    // --- Estado por campo (precargado al editar) ---
+    var nombres      by remember { mutableStateOf(productorEditar?.nombres.orEmpty()) }
+    var apellidos    by remember { mutableStateOf(productorEditar?.apellidos.orEmpty()) }
+    var dni          by remember { mutableStateOf(productorEditar?.dni.orEmpty()) }
+    var telefono     by remember { mutableStateOf(productorEditar?.telefono.orEmpty()) }
+    var direccion    by remember { mutableStateOf(productorEditar?.direccion.orEmpty()) }
+    var comunidad    by remember { mutableStateOf(productorEditar?.comunidad.orEmpty()) }
     var correo       by remember { mutableStateOf("") }
     var contrasena   by remember { mutableStateOf("") }
-    var estado       by remember { mutableStateOf(true) }
+    var estado       by remember { mutableStateOf(productorEditar?.estado ?: true) }
 
     // --- Validaciones derivadas (val, no var) ---
     val nombresVacio   = nombres.isBlank()
@@ -57,9 +61,11 @@ fun FormularioProductor(
     val telefonoInvalido   = telefono.length != 9
     val correoInvalido     = correo.isNotBlank() && !correo.contains("@")
     val contrasenaInvalida = contrasena.isNotEmpty() && contrasena.length < 6
+    // La cuenta (correo y contraseña) solo se crea al registrar
+    val cuentaValida = esEdicion || (correo.isNotBlank() && !correoInvalido && contrasena.length >= 6)
     val formularioValido = !nombresVacio && !apellidosVacio && !dniVacio
                           && !dniInvalido && !comunidadVacia && !telefonoInvalido
-                          && correo.isNotBlank() && !correoInvalido && contrasena.length >= 6
+                          && cuentaValida
 
     Column(
         modifier = modifier
@@ -69,7 +75,7 @@ fun FormularioProductor(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Registrar productor",
+            text = if (esEdicion) "Editar productor" else "Registrar productor",
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -136,7 +142,7 @@ fun FormularioProductor(
             modifier = Modifier.fillMaxWidth()
         )
 
-        OutlinedTextField(
+        if (!esEdicion) OutlinedTextField(
             value = correo,
             onValueChange = { correo = it.trim() },
             label = { Text("Correo (acceso del productor) *") },
@@ -147,7 +153,7 @@ fun FormularioProductor(
             modifier = Modifier.fillMaxWidth()
         )
 
-        OutlinedTextField(
+        if (!esEdicion) OutlinedTextField(
             value = contrasena,
             onValueChange = { contrasena = it },
             label = { Text("Contraseña inicial *") },
@@ -192,7 +198,7 @@ fun FormularioProductor(
                 onClick = {
                     alGuardar(
                         Productor(
-                            idProductor = "",   // lo asigna el backend
+                            idProductor = productorEditar?.idProductor.orEmpty(),   // al registrar lo asigna el backend
                             nombres     = nombres.trim(),
                             apellidos   = apellidos.trim(),
                             dni         = dni.trim(),

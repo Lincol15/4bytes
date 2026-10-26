@@ -101,6 +101,40 @@ La aplicación será desarrollada utilizando Kotlin Multiplatform y Compose Mult
 * [/shared/src/iosMain](./shared/src/iosMain/kotlin) — código específico iOS
 * [/shared/src/jvmMain](./shared/src/jvmMain/kotlin) — código JVM / Desktop (incluye Playground)
 
+## Modo sin conexión (offline-first)
+
+La app usa una base **SQLite local** (SQLDelight, archivo `acopio.db`) con tres tablas:
+
+| Tabla | Para qué |
+|---|---|
+| `cache_respuesta` | Copia de cada respuesta GET de la API, por usuario. Con internet se actualiza; sin internet las pantallas la usan. |
+| `recoleccion_pendiente` | Recolecciones registradas en el teléfono que todavía no llegan al servidor. |
+| `sesion` | Usuario y tokens, para abrir la app sin internet aunque se reinicie el celular. |
+
+- **Registrar sin internet:** la recolección se guarda en SQLite como *pendiente* y se ve en la lista con la etiqueta "Sin enviar".
+- **Al volver el internet:** un sincronizador (cada 20–60 s mientras la app está abierta) sube las pendientes con su `client_uuid` (Laravel no duplica si se reenvía) y la hora real de la recolección, y descarga los datos del rol para llenar la base local.
+- **Rechazos:** si el servidor rechaza una pendiente (p. ej. productor ya no asignado), queda "No sincronizado" con el motivo y botones *Reintentar* / *Descartar*.
+- **Tokens:** el login entrega un *access token* (60 min) y un *refresh token* (30 días). Cuando el access vence, la app lo renueva sola; si el refresh vence o se revoca, vuelve al login.
+
+> El primer inicio de sesión necesita internet. Solo las recolecciones se pueden registrar sin conexión; el resto de acciones (pagos, usuarios, análisis…) requieren internet, aunque sus pantallas se pueden consultar con los datos guardados.
+
+## Cómo levantarlo
+
+1. **Backend** (carpeta `web_acopio`, con MySQL de Laragon encendido):
+   ```bash
+   php artisan migrate          # aplica las migraciones nuevas
+   php artisan serve --host=0.0.0.0 --port=8000
+   ```
+2. **URL de la API** en `local.properties` de este proyecto (no se sube a git):
+   ```properties
+   # Emulador de Android: no hace falta, es el valor por defecto
+   api.baseUrl.debug=http://10.0.2.2:8000/api/v1/
+   # Celular físico en la misma red WiFi: IP de tu PC (ipconfig)
+   # api.baseUrl.debug=http://192.168.1.50:8000/api/v1/
+   ```
+3. **App:** abrir en Android Studio y ejecutar `androidApp`, o `./gradlew :androidApp:installDebug`.
+4. **Probar el modo sin conexión:** iniciar sesión como acopiador (`00000003` / `acopiador123`), activar el modo avión, registrar una recolección y volver a activar la red.
+
 ## Comandos útiles
 
 ```bash
@@ -112,6 +146,7 @@ La aplicación será desarrollada utilizando Kotlin Multiplatform y Compose Mult
 
 # Tests
 ./gradlew :shared:testAndroidHostTest
+./gradlew :shared:jvmTest            # incluye las pruebas del modo sin conexión con SQLite
 ./gradlew :shared:iosSimulatorArm64Test
 ```
 

@@ -39,20 +39,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.domain.model.EstadoQueja
 import com.example.acopiodeleche.domain.model.Queja
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
-import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
-private val VerdeHuata = Color(0xFF2E7D32)
+private val VerdeHuata = HuataColores.Verde
 
 @Composable
 fun QuejasProductorScreen(
     modifier: Modifier = Modifier,
-    viewModel: QuejasViewModel = viewModel { QuejasViewModel() }
+    viewModel: QuejasViewModel = koinViewModel()
 ) {
     // Laravel devuelve solo las quejas del productor autenticado
     val estadoQuejas by viewModel.quejas.collectAsStateWithLifecycle()
@@ -151,8 +152,8 @@ fun QuejasProductorScreen(
 @Composable
 private fun TarjetaQueja(queja: Queja) {
     val colorEstado = when (queja.estado) {
-        EstadoQueja.PENDIENTE    -> Color(0xFFE65100)
-        EstadoQueja.EN_REVISION  -> Color(0xFF1565C0)
+        EstadoQueja.PENDIENTE    -> HuataColores.NaranjaOscuro
+        EstadoQueja.EN_REVISION  -> HuataColores.Azul
         EstadoQueja.RESPONDIDA   -> VerdeHuata
         EstadoQueja.CERRADA      -> Color.Gray
     }

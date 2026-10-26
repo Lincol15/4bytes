@@ -37,7 +37,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Dialog
+import com.example.acopiodeleche.ui.tema.HuataColores
 
 // ── Utilidades de fecha/hora ──
 
@@ -124,7 +125,7 @@ fun CampoFecha(
     onValueChange: (String) -> Unit,
     label: String = "Fecha",
     obligatorio: Boolean = true,
-    colorPrimario: Color = Color(0xFF2E7D32),
+    colorPrimario: Color = HuataColores.Verde,
     modifier: Modifier = Modifier
 ) {
     var mostrarPicker by remember { mutableStateOf(false) }
@@ -192,7 +193,7 @@ fun CampoHora(
     onValueChange: (String) -> Unit,
     label: String = "Hora",
     obligatorio: Boolean = true,
-    colorPrimario: Color = Color(0xFF2E7D32),
+    colorPrimario: Color = HuataColores.Verde,
     modifier: Modifier = Modifier
 ) {
     var mostrarPicker by remember { mutableStateOf(false) }
@@ -259,7 +260,7 @@ fun FilaFechaHora(
     hora: String,
     onFechaChange: (String) -> Unit,
     onHoraChange: (String) -> Unit,
-    colorPrimario: Color = Color(0xFF2E7D32),
+    colorPrimario: Color = HuataColores.Verde,
     labelFecha: String = "Fecha",
     labelHora: String = "Hora"
 ) {

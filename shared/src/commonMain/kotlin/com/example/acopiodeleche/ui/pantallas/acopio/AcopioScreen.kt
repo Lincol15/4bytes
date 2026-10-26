@@ -27,17 +27,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.acopiodeleche.ui.estado.CargaOError
 import com.example.acopiodeleche.ui.estado.EstadoEnvio
 import com.example.acopiodeleche.ui.estado.EstadoUi
-import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.estado.datosOVacio
+import com.example.acopiodeleche.ui.tema.HuataColores
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun AcopioScreen(
     onVolver: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    viewModel: RecoleccionViewModel = viewModel { RecoleccionViewModel() }
+    viewModel: RecoleccionViewModel = koinViewModel()
 ) {
     val estadoRegistros by viewModel.registros.collectAsStateWithLifecycle()
     val estadoProductores by viewModel.productores.collectAsStateWithLifecycle()
@@ -57,10 +58,6 @@ fun AcopioScreen(
             if (onVolver != null) {
                 TextButton(onClick = onVolver) { Text("← Volver") }
             }
-            Text(
-                text = "Acopio de leche",
-                style = MaterialTheme.typography.headlineMedium
-            )
             Text(
                 text = "${registros.size} registros · ${
                     registros.sumOf { it.litros }.let {
@@ -82,7 +79,7 @@ fun AcopioScreen(
         ) { Text("+ Registrar acopio") }
 
         when (val actual = envio) {
-            is EstadoEnvio.Exito -> MensajeEnvio(actual.mensaje, Color(0xFF2E7D32), viewModel::limpiarEnvio)
+            is EstadoEnvio.Exito -> MensajeEnvio(actual.mensaje, HuataColores.Verde, viewModel::limpiarEnvio)
             is EstadoEnvio.Error -> MensajeEnvio(actual.mensaje, MaterialTheme.colorScheme.error, viewModel::limpiarEnvio)
             else -> Unit
         }
@@ -112,7 +109,11 @@ fun AcopioScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(registros, key = { it.id }) { registro ->
-                        TarjetaAcopio(registro = registro)
+                        TarjetaAcopio(
+                            registro = registro,
+                            onReintentar = viewModel::reintentar,
+                            onDescartar = viewModel::descartar
+                        )
                     }
                 }
             }

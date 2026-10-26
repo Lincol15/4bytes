@@ -14,25 +14,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.acopiodeleche.domain.model.EstadoSync
+import com.example.acopiodeleche.ui.tema.tarjetaHuata
 import com.example.acopiodeleche.domain.model.RegistroAcopio
 
 @Composable
 fun TarjetaAcopio(
     registro: RegistroAcopio,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReintentar: ((RegistroAcopio) -> Unit)? = null,
+    onDescartar: ((RegistroAcopio) -> Unit)? = null
 ) {
     // El backend devuelve el nombre del productor junto con el registro
     val nombreProductor = registro.nombreProductor ?: "Productor desconocido"
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    Box(modifier.fillMaxWidth().tarjetaHuata(RoundedCornerShape(16.dp))) {
         Column(modifier = Modifier.padding(16.dp)) {
 
             // Fila superior: productor + litros
@@ -73,17 +77,32 @@ fun TarjetaAcopio(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Chip de estado de recepción
+            // Chip de estado: recepción en planta o, si solo está en el teléfono, sincronización
             SuggestionChip(
                 onClick = {},
                 label = { Text(registro.estadoRecepcion) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = if (registro.recibido)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = when {
+                        registro.estadoSync == EstadoSync.ERROR -> MaterialTheme.colorScheme.errorContainer
+                        registro.estadoSync == EstadoSync.PENDIENTE -> MaterialTheme.colorScheme.tertiaryContainer
+                        registro.recibido -> MaterialTheme.colorScheme.primaryContainer
+                        else -> MaterialTheme.colorScheme.secondaryContainer
+                    }
                 )
             )
+
+            // Rechazado al sincronizar: se muestra el motivo y se puede reintentar o descartar
+            if (registro.estadoSync == EstadoSync.ERROR) {
+                Text(
+                    text = registro.errorSync ?: "El servidor no aceptó el registro.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    onReintentar?.let { TextButton(onClick = { it(registro) }) { Text("Reintentar") } }
+                    onDescartar?.let { TextButton(onClick = { it(registro) }) { Text("Descartar") } }
+                }
+            }
         }
     }
 }

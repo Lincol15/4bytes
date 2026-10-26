@@ -70,21 +70,25 @@ import com.example.acopiodeleche.domain.model.TipoProducto
 import com.example.acopiodeleche.domain.model.VentaSalida
 import com.example.acopiodeleche.ui.components.CampoFecha
 import kotlinx.coroutines.launch
+import com.example.acopiodeleche.ui.tema.EsqueletoRol
+import com.example.acopiodeleche.ui.tema.HuataColores
+import com.example.acopiodeleche.ui.tema.OpcionMenu
+import com.example.acopiodeleche.ui.tema.TarjetaEstadistica
+import org.koin.compose.viewmodel.koinViewModel
 
-private val AzulPlanta        = Color(0xFF37474F)
-private val VerdeHuata        = Color(0xFF2E7D32)
-private val NaranjaProduccion = Color(0xFFE65100)
-private val RojoAlerta        = Color(0xFFC62828)
+private val AzulPlanta        = HuataColores.Verde
+private val VerdeHuata        = HuataColores.Verde
+private val NaranjaProduccion = HuataColores.NaranjaOscuro
+private val RojoAlerta        = HuataColores.Rojo
 
 // ── Ítems del menú lateral ─────────────────────────────────────────────────
 
-private data class ItemMenuPlanta(val icono: String, val titulo: String, val indice: Int)
 
 private val MENU_PLANTA = listOf(
-    ItemMenuPlanta("🏠", "Inicio",           0),
-    ItemMenuPlanta("🧀", "Producción",       1),
-    ItemMenuPlanta("📦", "Ventas / Salidas", 2),
-    ItemMenuPlanta("📥", "Recepción de leche", 3)
+    OpcionMenu("🏠", "Inicio"),
+    OpcionMenu("🧀", "Producción", "Planta"),
+    OpcionMenu("📦", "Ventas / Salidas", "Planta"),
+    OpcionMenu("📥", "Recepción de leche", "Planta")
 )
 
 // ── Stock del lote: lo calcula Laravel a partir del inventario (entradas − salidas) ──
@@ -112,161 +116,21 @@ fun TrabajadorPlantaScreen(
     onCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val usuario       = SesionActual.usuario
     var seccionActual by remember { mutableStateOf(0) }
-    val drawerState   = rememberDrawerState(DrawerValue.Closed)
-    val scope         = rememberCoroutineScope()
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier             = Modifier.width(260.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surface
-            ) {
-                // ── Cabecera con perfil ────────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(AzulPlanta)
-                        .padding(horizontal = 20.dp, vertical = 24.dp)
-                ) {
-                    Column {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .background(Color.White.copy(0.2f), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
-                        ) { Text("🏭", fontSize = 26.sp) }
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            usuario?.nombreCompleto ?: "Trabajador",
-                            style      = MaterialTheme.typography.titleSmall,
-                            color      = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Trabajador de Planta",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(0.75f)
-                        )
-                        Text(
-                            "Ecolácteos Huata",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(0.6f)
-                        )
-                        if (!usuario?.correo.isNullOrBlank()) {
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                usuario!!.correo,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(0.5f)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // ── Ítems de navegación ────────────────────────────────────
-                MENU_PLANTA.forEach { item ->
-                    val seleccionado = seccionActual == item.indice
-                    NavigationDrawerItem(
-                        icon  = { Text(item.icono, fontSize = 18.sp) },
-                        label = {
-                            Text(
-                                item.titulo,
-                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        selected = seleccionado,
-                        onClick  = {
-                            seccionActual = item.indice
-                            scope.launch { drawerState.close() }
-                        },
-                        colors   = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = AzulPlanta.copy(0.12f),
-                            selectedTextColor      = AzulPlanta,
-                            selectedIconColor      = AzulPlanta
-                        ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                    )
-                }
-
-                // ── Cerrar sesión al fondo ─────────────────────────────────
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
-                NavigationDrawerItem(
-                    icon     = { Text("🚪", fontSize = 18.sp) },
-                    label    = { Text("Cerrar sesión", color = RojoAlerta) },
-                    selected = false,
-                    onClick  = {
-                        scope.launch { drawerState.close() }
-                        onCerrarSesion()
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        },
+    EsqueletoRol(
+        opciones = MENU_PLANTA,
+        seleccion = seccionActual,
+        onSeleccionar = { seccionActual = it },
+        onCerrarSesion = onCerrarSesion,
+        subtitulo = if (seccionActual == 0) "Producción, stock y recepción de leche" else null,
         modifier = modifier
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // ── TopBar ────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(AzulPlanta)
-                    .padding(horizontal = 8.dp, vertical = 12.dp)
-            ) {
-                // Botón hamburguesa
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(44.dp)
-                        .clickable { scope.launch { drawerState.open() } }
-                        .background(Color.White.copy(0.15f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier            = Modifier.padding(8.dp)
-                    ) {
-                        repeat(3) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(2.dp)
-                                    .background(Color.White, RoundedCornerShape(1.dp))
-                            )
-                        }
-                    }
-                }
-                Column(
-                    modifier            = Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val item = MENU_PLANTA.find { it.indice == seccionActual }
-                    Text(
-                        "${item?.icono ?: ""} ${item?.titulo ?: "Planta"}",
-                        style      = MaterialTheme.typography.titleMedium,
-                        color      = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text("Ecolácteos Huata", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(0.75f))
-                }
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (seccionActual) {
-                    0 -> InicioTrabajador()
-                    1 -> ProduccionTab()
-                    2 -> VentasTab()
-                    3 -> RecepcionPlantaScreen()
-                }
-            }
+        when (seccionActual) {
+            0 -> InicioTrabajador()
+            1 -> ProduccionTab()
+            2 -> VentasTab()
+            3 -> RecepcionPlantaScreen()
         }
     }
 }
@@ -276,7 +140,7 @@ fun TrabajadorPlantaScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun InicioTrabajador(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+private fun InicioTrabajador(viewModel: PlantaViewModel = koinViewModel()) {
     val estadoLotes  by viewModel.lotes.collectAsStateWithLifecycle()
     val estadoVentas by viewModel.ventas.collectAsStateWithLifecycle()
     if (estadoLotes !is EstadoUi.Exito) {
@@ -293,14 +157,9 @@ private fun InicioTrabajador(viewModel: PlantaViewModel = viewModel { PlantaView
     val lotesPorVencer   = lotes.filter { !it.fechaVencimiento.isNullOrBlank() && stockDisponible(it) > 0 }
 
     LazyColumn(
-        contentPadding      = PaddingValues(16.dp),
+        contentPadding      = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text("Dashboard de planta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Ecolácteos Huata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
         // KPIs principales
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -311,7 +170,7 @@ private fun InicioTrabajador(viewModel: PlantaViewModel = viewModel { PlantaView
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 KpiCard("📦", "$lotesConStock", "Lotes con stock", VerdeHuata, Modifier.weight(1f))
-                KpiCard("💰", formatearMonto(totalVentasHoy), "Total ventas", Color(0xFF6A1B9A), Modifier.weight(1f))
+                KpiCard("💰", formatearMonto(totalVentasHoy), "Total ventas", HuataColores.Morado, Modifier.weight(1f))
             }
         }
 
@@ -367,19 +226,8 @@ private fun InicioTrabajador(viewModel: PlantaViewModel = viewModel { PlantaView
 }
 
 @Composable
-private fun KpiCard(icono: String, valor: String, etiqueta: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        colors   = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape    = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icono, fontSize = 22.sp)
-            Text(valor, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = color)
-            Text(etiqueta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
+private fun KpiCard(icono: String, valor: String, etiqueta: String, color: Color, modifier: Modifier) =
+    TarjetaEstadistica(etiqueta, valor, icono, color, modifier)
 
 @Composable
 private fun TarjetaLoteCompacta(lote: LoteProduccion) {
@@ -417,7 +265,7 @@ private fun TarjetaLoteCompacta(lote: LoteProduccion) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProduccionTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+private fun ProduccionTab(viewModel: PlantaViewModel = koinViewModel()) {
     var tabProd by remember { mutableStateOf(0) }
     var mostrarNuevaJornada by remember { mutableStateOf(false) }
     val envio by viewModel.envio.collectAsStateWithLifecycle()
@@ -480,7 +328,7 @@ private fun ProduccionTab(viewModel: PlantaViewModel = viewModel { PlantaViewMod
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecetasTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+private fun RecetasTab(viewModel: PlantaViewModel = koinViewModel()) {
     // Recetas del backend (las mismas que en el panel web de planta)
     val estadoRecetas by viewModel.recetas.collectAsStateWithLifecycle()
     val estadoProductos by viewModel.productos.collectAsStateWithLifecycle()
@@ -942,7 +790,7 @@ private fun FiltroChipPlanta(label: String, seleccionado: Boolean, onClick: () -
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VentasTab(viewModel: PlantaViewModel = viewModel { PlantaViewModel() }) {
+private fun VentasTab(viewModel: PlantaViewModel = koinViewModel()) {
     var tabVentas        by remember { mutableStateOf(0) }
     val estadoVentas     by viewModel.ventas.collectAsStateWithLifecycle()
     val estadoLotes      by viewModel.lotes.collectAsStateWithLifecycle()

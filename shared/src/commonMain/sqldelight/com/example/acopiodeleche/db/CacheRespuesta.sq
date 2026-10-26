@@ -1,0 +1,18 @@
+-- Copia local de cada respuesta GET de la API (JSON tal cual llegó), por usuario y URL.
+-- Se actualiza en cada consulta con conexión y se usa cuando no hay internet.
+CREATE TABLE cache_respuesta (
+    id_usuario TEXT NOT NULL,
+    clave TEXT NOT NULL,
+    cuerpo TEXT NOT NULL,
+    actualizado_en INTEGER NOT NULL,
+    PRIMARY KEY (id_usuario, clave)
+);
+
+obtener:
+SELECT cuerpo FROM cache_respuesta WHERE id_usuario = ? AND clave = ?;
+
+guardar:
+INSERT OR REPLACE INTO cache_respuesta (id_usuario, clave, cuerpo, actualizado_en) VALUES (?, ?, ?, ?);
+
+borrarDeUsuario:
+DELETE FROM cache_respuesta WHERE id_usuario = ?;

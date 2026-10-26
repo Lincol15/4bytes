@@ -2,7 +2,6 @@ package com.example.acopiodeleche.ui.pantallas.calidad
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.acopiodeleche.data.AppContainer
 import com.example.acopiodeleche.data.remote.ApiResult
 import com.example.acopiodeleche.data.repository.CalidadRepository
 import com.example.acopiodeleche.data.repository.ProductorRepository
@@ -17,8 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class CalidadViewModel(
-    private val calidadRepository: CalidadRepository = AppContainer.calidadRepository,
-    private val productorRepository: ProductorRepository = AppContainer.productorRepository
+    private val calidadRepository: CalidadRepository,
+    private val productorRepository: ProductorRepository
 ) : ViewModel() {
 
     private val _analisis = MutableStateFlow<EstadoUi<List<ControlCalidad>>>(EstadoUi.Cargando)
